@@ -1,0 +1,122 @@
+from pydantic import BaseModel
+from typing import Optional
+
+
+# ── Team ──────────────────────────────────────────────
+
+class TeamMemberBase(BaseModel):
+    name: str
+    position: str
+    stack: str
+    description: str = ""
+    photo_url: str = ""
+    order: int = 0
+
+
+class TeamMemberCreate(TeamMemberBase):
+    pass
+
+
+class TeamMemberUpdate(BaseModel):
+    name: Optional[str] = None
+    position: Optional[str] = None
+    stack: Optional[str] = None
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    order: Optional[int] = None
+
+
+class TeamMemberResponse(TeamMemberBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ── Services ──────────────────────────────────────────
+
+class ServiceBase(BaseModel):
+    title: str
+    description: str = ""
+    icon: str = "💻"
+    order: int = 0
+
+
+class ServiceCreate(ServiceBase):
+    pass
+
+
+class ServiceUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    order: Optional[int] = None
+
+
+class ServiceResponse(ServiceBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ── Portfolio ─────────────────────────────────────────
+
+class PortfolioBase(BaseModel):
+    title: str
+    short_description: str = ""
+    full_description: str = ""
+    image_url: str = ""
+    slug: str
+    tags: str = ""
+    order: int = 0
+
+
+class PortfolioCreate(PortfolioBase):
+    pass
+
+
+class PortfolioUpdate(BaseModel):
+    title: Optional[str] = None
+    short_description: Optional[str] = None
+    full_description: Optional[str] = None
+    image_url: Optional[str] = None
+    slug: Optional[str] = None
+    tags: Optional[str] = None
+    order: Optional[int] = None
+
+
+class PortfolioResponse(PortfolioBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ── Auth ──────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# ── Chat ──────────────────────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: str
+    text: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+    has_submitted_lead: bool = False
+
+
+class ChatResponse(BaseModel):
+    reply: str
