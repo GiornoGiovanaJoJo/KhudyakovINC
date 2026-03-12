@@ -66,8 +66,8 @@ async def create_lead(lead: LeadCreate):
     # Генерируем ИИ-саммари на основе диалога
     summary = await generate_lead_summary(lead.chat_history)
 
-    # Forward to our new local Telegram bot microservice instead of direct API
-    url = "http://127.0.0.1:8001/send_lead"
+    # Forward to our new local Telegram bot microservice
+    url = "http://telegram_bot:8001/send_lead"
     payload = {
         "name": lead.name,
         "contact": lead.contact,
