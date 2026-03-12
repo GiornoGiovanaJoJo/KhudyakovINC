@@ -28,13 +28,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           script: |
-            # Fix broken apt lists and install dependencies
-            sudo mkdir -p /etc/apt/keyrings
-            sudo apt-get clean
-            sudo mv /var/lib/apt/lists /var/lib/apt/lists.broken || true
-            sudo mkdir -p /var/lib/apt/lists/partial
-            sudo apt-get update --allow-insecure-repositories --allow-unauthenticated || true
-            sudo apt-get install -y --allow-unauthenticated git docker.io docker-compose
+            # Remove broken third-party apt source lists that block package installation
+            sudo rm -f /etc/apt/sources.list.d/nodejs.list /etc/apt/sources.list.d/docker.list || true
+            sudo apt-get update
+            sudo apt-get install -y git docker.io docker-compose
             
             # Stop default nginx to free port 80
             sudo systemctl stop nginx || true
