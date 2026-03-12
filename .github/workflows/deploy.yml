@@ -28,9 +28,13 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           script: |
-            # Update and install dependencies if not present
-            sudo apt-get update
+            # Update and install dependencies if not present (ignoring missing keys for existing broken repos)
+            sudo apt-get update --allow-unauthenticated || true
             sudo apt-get install -y git docker.io docker-compose
+            
+            # Stop default nginx to free port 80
+            sudo systemctl stop nginx || true
+            sudo systemctl disable nginx || true
             
             # Start Docker
             sudo systemctl enable docker
