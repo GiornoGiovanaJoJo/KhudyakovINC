@@ -1,0 +1,73 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Directory
+        run: mkdir -p ~/.ssh
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          port: ${{ secrets.PORT }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            # Update and install dependencies if not present
+            sudo apt-get update
+            sudo apt-get install -y git docker.io docker-compose
+            
+            # Start Docker
+            sudo systemctl enable docker
+            sudo systemctl start docker
+
+            # Setup Project
+            cd /opt
+            if [ ! -d "KhudyakovINC" ]; then
+                git clone https://github.com/GiornoGiovanaJoJo/KhudyakovINC.git
+                cd KhudyakovINC
+            else
+                cd KhudyakovINC
+                git checkout main
+                git reset --hard origin/main
+                git pull origin main
+            fi
+
+            # Setup Environment Variables
+            mkdir -p backend frontend telegram_bot
+            
+            # Backend ENV
+            cat <<EOF > backend/.env
+            ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            YANDEX_GPT_API_KEY=${{ secrets.YANDEX_GPT_API_KEY }}
+            YANDEX_GPT_FOLDER_ID=${{ secrets.YANDEX_GPT_FOLDER_ID }}
+            EOF
+            
+            # Telegram Bot ENV
+            cat <<EOF > telegram_bot/.env
+            BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+            EOF
+            
+            # Rebuild and restart containers
+            sudo docker-compose down
+            sudo docker-compose up -d --build
+            
+            # Clean up dangling images to save space
+            sudo docker image prune -f

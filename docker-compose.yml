@@ -33,5 +33,14 @@ services:
       - backend
     restart: unless-stopped
 
+  telegram_bot:
+    build: ./telegram_bot
+    container_name: khudyakov-telegram-bot
+    restart: unless-stopped
+    env_file:
+      - ./telegram_bot/.env
+    depends_on:
+      - backend
+
 volumes:
   backend-data:

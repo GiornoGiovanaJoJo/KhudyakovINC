@@ -103,7 +103,7 @@ async def send_lead(lead: LeadData):
     history_text = lead.chat_history[:3000] if lead.chat_history else "Нет истории"
     text += f"<pre>{history_text}</pre>"
     
-    success_count = 0
+    success_count: int = 0
     for chat_id in chats:
         try:
             await bot.send_message(chat_id=chat_id, text=text)
@@ -126,4 +126,4 @@ async def on_startup():
     asyncio.create_task(start_bot())
 
 if __name__ == "__main__":
-    uvicorn.run("bot:app", host="127.0.0.1", port=8001, reload=False)
+    uvicorn.run("bot:app", host="0.0.0.0", port=8001, reload=False)
