@@ -14,16 +14,20 @@
           <span></span>
         </button>
 
-        <nav class="header__nav" :class="{ open: menuOpen }">
-          <NuxtLink to="/" class="header__link" @click="menuOpen = false">Главная</NuxtLink>
-          <NuxtLink to="/services" class="header__link" @click="menuOpen = false">Услуги</NuxtLink>
-          <NuxtLink to="/portfolio" class="header__link" @click="menuOpen = false">Портфолио</NuxtLink>
-          <NuxtLink to="/admin" class="header__link header__link--admin" @click="menuOpen = false">Админка</NuxtLink>
-          <div class="header__auth">
-            <NuxtLink v-if="isLoggedIn" to="/profile" class="header__link" @click="menuOpen = false">Профиль</NuxtLink>
-            <NuxtLink v-else to="/auth/login" class="header__link" @click="menuOpen = false">Вход</NuxtLink>
-          </div>
-        </nav>
+          <nav class="header__nav" :class="{ open: menuOpen }">
+            <NuxtLink to="/" class="header__link" @click="menuOpen = false">Главная</NuxtLink>
+            <NuxtLink to="/services" class="header__link" @click="menuOpen = false">Услуги</NuxtLink>
+            <NuxtLink to="/portfolio" class="header__link" @click="menuOpen = false">Портфолио</NuxtLink>
+            <NuxtLink to="/admin" class="header__link header__link--admin" @click="menuOpen = false">Админка</NuxtLink>
+            <div class="header__auth">
+              <template v-if="isLoggedIn && user">
+                <span class="header__user-name">{{ user.full_name || 'Профиль' }}</span>
+                <button @click="handleLogout" class="header__logout-btn">Выход</button>
+              </template>
+              <NuxtLink v-else-if="isLoggedIn" to="/profile" class="header__link" @click="menuOpen = false">Профиль</NuxtLink>
+              <NuxtLink v-else to="/auth/login" class="header__link" @click="menuOpen = false">Вход</NuxtLink>
+            </div>
+          </nav>
       </div>
     </header>
 
@@ -100,12 +104,34 @@
 <script setup>
 const menuOpen = ref(false)
 const isLoggedIn = ref(false)
+const user = ref(null)
 
 // Check cookie or token on mount
-onMounted(() => {
+onMounted(async () => {
   const token = localStorage.getItem('auth_token')
   isLoggedIn.value = !!token
+  
+  if (isLoggedIn.value) {
+    try {
+      user.value = await $fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (e) {
+      console.warn("Failed to fetch user info", e)
+      // Token might be invalid
+      if (e.status === 401) {
+        handleLogout()
+      }
+    }
+  }
 })
+
+const handleLogout = () => {
+  localStorage.removeItem('auth_token')
+  isLoggedIn.value = false
+  user.value = null
+  navigateTo('/')
+}
 </script>
 
 <style scoped>
@@ -168,6 +194,39 @@ onMounted(() => {
   font-size: 0.95rem;
   transition: color var(--duration-fast) var(--ease-out);
   position: relative;
+}
+
+.header__auth {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.header__user-name {
+  color: var(--c-text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header__logout-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.header__logout-btn:hover {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff4d4d;
+  border-color: rgba(255, 77, 77, 0.2);
 }
 
 .header__link::after {
@@ -271,7 +330,7 @@ onMounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--c-bg-primary);
+    background: #0f0f12; /* Solid, opaque background */
     flex-direction: column;
     justify-content: flex-start;
     padding-top: var(--space-3xl);

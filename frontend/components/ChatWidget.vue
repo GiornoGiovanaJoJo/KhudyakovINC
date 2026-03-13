@@ -179,9 +179,9 @@ const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU')
 
 // Sound effect
 const playNotificationSound = () => {
-  if (!hasUserClicked.value) return // Block if no interaction yet
   try {
-    const audio = new Audio('https://cdn.pixabay.com/audio/2021/08/04/audio_0625c153b1.mp3') // More stable link
+    // Using a more reliable notification sound URL (direct link to a standard UI sound)
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
     audio.volume = 0.3
     audio.play().catch(e => console.warn("Autoplay still blocked:", e))
   } catch (e) {

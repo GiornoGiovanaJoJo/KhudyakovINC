@@ -15,12 +15,12 @@
 
           <div class="form-group">
             <label class="form-label">Номер телефона</label>
-            <input v-model="form.phone" type="tel" class="form-input" placeholder="+7 (999) 000-00-00" required>
+            <input v-model="form.phone" type="tel" class="form-input" placeholder="+7 (999) 000-00-00" autocomplete="username" required>
           </div>
-
+|
           <div class="form-group">
             <label class="form-label">Пароль</label>
-            <input v-model="form.password" type="password" class="form-input" placeholder="••••••••" required>
+            <input v-model="form.password" type="password" class="form-input" placeholder="••••••••" autocomplete="current-password" required>
           </div>
 
           <div v-if="error" class="auth-error">{{ error }}</div>
