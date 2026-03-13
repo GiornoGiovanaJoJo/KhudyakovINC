@@ -119,9 +119,30 @@ async def send_lead(lead: LeadData):
     builder.adjust(2)
     
     success_count: int = 0
+    # Internal secret to fetch PDF
+    INTERNAL_SECRET = "super-secret-service-key"
+    
     for chat_id in chats:
         try:
+            # 1. Send the lead info message
             await bot.send_message(chat_id=chat_id, text=text, reply_markup=builder.as_markup())
+            
+            # 2. Fetch and send the PDF if available
+            try:
+                backend_pdf_url = f"http://backend:8000/api/leads/{lead.id}/proposal"
+                async with httpx.AsyncClient(timeout=20.0) as client:
+                    pdf_res = await client.get(backend_pdf_url, headers={"X-Internal-Secret": INTERNAL_SECRET})
+                    if pdf_res.status_code == 200:
+                        from aiogram.types import BufferedInputFile
+                        pdf_file = BufferedInputFile(pdf_res.content, filename=f"Proposal_{lead.name.replace(' ', '_')}.pdf")
+                        await bot.send_document(
+                            chat_id=chat_id, 
+                            document=pdf_file, 
+                            caption=f"📄 Сгенерированное КП для {safe_name}"
+                        )
+            except Exception as pdf_err:
+                logging.error(f"Failed to fetch/send PDF for lead {lead.id}: {pdf_err}")
+                
             success_count += 1
         except Exception as e:
             logging.error(f"Failed to send lead to chat {chat_id}: {e}")
@@ -131,10 +152,15 @@ async def send_lead(lead: LeadData):
     else:
         raise HTTPException(status_code=500, detail="Emails failed to deliver to registered chats.")
 
-# Callback handler for statuses
 @dp.callback_query(F.data.startswith("status_"))
 async def handle_status_change(callback: types.CallbackQuery):
-    _, lead_id, new_status = callback.data.split("_")
+    # Fix: status_1_in_progress -> parts=["status", "1", "in", "progress"]
+    parts = callback.data.split("_")
+    if len(parts) < 3:
+        return
+    
+    lead_id = parts[1]
+    new_status = "_".join(parts[2:])
     
     # Map visual status
     status_map = {
@@ -142,12 +168,12 @@ async def handle_status_change(callback: types.CallbackQuery):
         "completed": "✅ ЗАВЕРШЕНО"
     }
     
-    # Update backend
+    # Match INTERNAL_SECRET
+    INTERNAL_SECRET = "super-secret-service-key"
     backend_url = f"http://backend:8000/api/leads/{lead_id}"
     try:
         async with httpx.AsyncClient() as client:
-            # Match INTERNAL_SECRET from backend/app/routers/leads.py
-            headers = {"X-Internal-Secret": "super-secret-service-key"}
+            headers = {"X-Internal-Secret": INTERNAL_SECRET}
             response = await client.patch(backend_url, json={"status": new_status}, headers=headers)
             if response.status_code == 200:
                 await callback.answer(f"Статус изменен на: {status_map.get(new_status)}")
