@@ -268,12 +268,17 @@ const selectOption = (option) => {
     quizStep.value++
   } else {
     quizCompleted.value = true
+    // Save structured context for ChatWidget
+    const context = {
+      type: quizAnswers.value[0],
+      design: quizAnswers.value[1],
+      timeline: quizAnswers.value[2]
+    }
+    localStorage.setItem('quiz_context', JSON.stringify(context))
   }
 }
 
 const startChatWithQuiz = () => {
-  const context = `Я прошел квиз: Тип: ${quizAnswers.value[0]}, Дизайн: ${quizAnswers.value[1]}, Сроки: ${quizAnswers.value[2]}. Расскажи подробнее про такие проекты.`
-  localStorage.setItem('chat_initial_message', context)
   openChat()
 }
 

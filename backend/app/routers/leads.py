@@ -199,3 +199,27 @@ async def get_lead_proposal(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@router.get("/status/check")
+async def check_lead_status(contact: str, db: AsyncSession = Depends(get_db)):
+    """
+    Public endpoint to check lead status by contact (email or phone).
+    """
+    from sqlalchemy import select
+    # Search for the latest lead with this contact
+    result = await db.execute(
+        select(Lead)
+        .where(Lead.contact == contact)
+        .order_by(Lead.created_at.desc())
+    )
+    lead = result.scalars().first()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Заявка с таким контактом не найдена")
+    
+    return {
+        "id": lead.id,
+        "status": lead.status,
+        "created_at": lead.created_at,
+        "name": lead.name
+    }

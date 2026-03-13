@@ -78,6 +78,15 @@ async def chat(data: ChatRequest, db: Session = Depends(get_db)):
             "ответь на них и ОБЯЗАТЕЛЬНО уточни: 'У вас есть еще вопросы, или вы хотите дополнить вашу заявку новыми деталями? "
             "Если да, нажмите кнопку Дополнить сверху'."
         )
+    
+    if data.quiz_context:
+        q_type = data.quiz_context.get("type", "проект")
+        q_design = data.quiz_context.get("design", "не указано")
+        q_time = data.quiz_context.get("timeline", "не указано")
+        dynamic_prompt += (
+            f"\n\nКОНТЕКСТ КВИЗА: Клиент хочет {q_type}. Дизайн: {q_design}. Сроки: {q_time}. "
+            "Начни разговор с подтверждения того, что ты уже ознакомился с этими деталями (если это начало диалога)."
+        )
 
     messages = [{"role": "system", "text": dynamic_prompt}]
 

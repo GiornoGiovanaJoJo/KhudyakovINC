@@ -20,6 +20,9 @@
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="chat-header__icon-btn" @click="toggleTrackingMode" title="Отследить заявку">
+              🔍
+            </button>
             <button class="chat-header__icon-btn" @click="clearChat" title="Начать новый диалог">
               🔄
             </button>
@@ -68,6 +71,28 @@
           </div>
         </div>
 
+        <!-- Tracking Form -->
+        <div v-else-if="isTrackingMode" class="chat-lead-form">
+          <div class="chat-lead-form__title">Проверить статус заявки</div>
+          <p class="text-xs text-muted mb-2 text-center">Введите телефон или почту, указанные при регистрации</p>
+          <input v-model="trackingContact" type="text" placeholder="Телефон или почта" class="chat-input__field mb-2" @keyup.enter="checkStatus" />
+          <div v-if="trackingResult" class="tracking-result glass mb-2">
+             <div class="tracking-result__status">Статус: <strong>{{ formatStatus(trackingResult.status) }}</strong></div>
+             <div class="tracking-result__date">{{ formatDate(trackingResult.created_at) }}</div>
+             <div v-if="trackingResult.status === 'completed'" class="mt-2 text-center">
+                <a :href="`/api/leads/${trackingResult.id}/proposal`" target="_blank" class="chat-btn chat-btn--primary block text-center" style="text-decoration: none;">
+                  📄 Скачать КП
+                </a>
+             </div>
+          </div>
+          <div class="chat-lead-form__actions">
+            <button @click="isTrackingMode = false" class="chat-btn chat-btn--secondary">Назад</button>
+            <button @click="checkStatus" class="chat-btn chat-btn--primary" :disabled="isCheckingStatus || !trackingContact">
+              {{ isCheckingStatus ? 'Поиск...' : 'Проверить' }}
+            </button>
+          </div>
+        </div>
+
         <!-- Chat Input -->
         <form v-else class="chat-input" @submit.prevent="sendMessage">
           <input
@@ -82,6 +107,14 @@
             ➤
           </button>
         </form>
+
+        <!-- Proactive Hint Toast -->
+        <Transition name="fade">
+          <div v-if="proactiveGreeting && !isOpen" class="chat-proactive-toast glass" @click="toggleChat">
+            <div class="chat-proactive-toast__close" @click.stop="proactiveGreeting = ''">✕</div>
+            <div class="chat-proactive-toast__text">{{ proactiveGreeting }}</div>
+          </div>
+        </Transition>
       </div>
     </Transition>
   </div>
@@ -102,6 +135,46 @@ const isLeadMode = ref(false)
 const isSubmittingLead = ref(false)
 const hasSubmittedLead = ref(false)
 const leadForm = ref({ name: '', contact: '' })
+const proactiveGreeting = ref('')
+
+// Tracking State
+const isTrackingMode = ref(false)
+const isCheckingStatus = ref(false)
+const trackingContact = ref('')
+const trackingResult = ref(null)
+
+const toggleTrackingMode = () => {
+  isTrackingMode.value = !isTrackingMode.value
+  isLeadMode.value = false
+  trackingResult.value = null
+  if (isTrackingMode.value) scrollToBottom()
+}
+
+const checkStatus = async () => {
+  if (!trackingContact.value) return
+  isCheckingStatus.value = true
+  trackingResult.value = null
+  try {
+    const res = await $fetch(`/api/leads/status/check?contact=${encodeURIComponent(trackingContact.value)}`)
+    trackingResult.value = res
+  } catch (err) {
+    alert("Заявка не найдена. Проверьте правильность введенных данных.")
+  } finally {
+    isCheckingStatus.value = false
+  }
+}
+
+const formatStatus = (s) => {
+  const map = {
+    'new': '⏳ Новая',
+    'in_progress': '⚙️ В работе',
+    'completed': '✅ Завершена',
+    'cancelled': '❌ Отменена'
+  }
+  return map[s] || s
+}
+
+const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU')
 
 // Sound effect
 const playNotificationSound = () => {
@@ -116,7 +189,7 @@ const playNotificationSound = () => {
 
 // Lifecycle
 onMounted(() => {
-  // Restore chat state from localStorage
+  // Restore chat state
   const savedState = localStorage.getItem('khudyakov_chat_state')
   if (savedState) {
     try {
@@ -125,27 +198,10 @@ onMounted(() => {
         messages.value = parsed.messages
         hasInteracted.value = parsed.messages.length > 0
         hasSubmittedLead.value = !!parsed.hasSubmittedLead
-        if (parsed.leadForm) {
-          leadForm.value = parsed.leadForm
-        }
+        if (parsed.leadForm) leadForm.value = parsed.leadForm
         scrollToBottom()
       }
-    } catch (e) {
-      console.error("Failed to parse chat state", e)
-    }
-  } else {
-    // Migration from old basic history
-    const oldHistory = localStorage.getItem('khudyakov_chat_history')
-    if (oldHistory) {
-      try {
-        const parsed = JSON.parse(oldHistory)
-        if (Array.isArray(parsed)) {
-          messages.value = parsed
-          hasInteracted.value = parsed.length > 0
-          scrollToBottom()
-        }
-      } catch (e) {}
-    }
+    } catch (e) {}
   }
 
   // Attention seeking mechanism
@@ -157,28 +213,63 @@ onMounted(() => {
     }, 3000)
   }
 
-  // Check for quiz results or initial message
-  const initialMsg = localStorage.getItem('chat_initial_message')
-  if (initialMsg && messages.value.length === 0) {
-    // We wait a bit for the animation to look natural if the chat is opened via quiz
+  // Proactive Triggers
+  if (!hasInteracted.value) {
+    // 1. Time trigger
     setTimeout(() => {
-      if (isOpen.value) {
-        inputText.value = initialMsg
-        sendMessage()
-        localStorage.removeItem('chat_initial_message')
+      if (!isOpen.value && !hasInteracted.value) {
+        showProactiveGreeting("Нужна помощь с выбором технологий? Я на связи! 😊")
       }
-    }, 500)
+    }, 15000)
+
+    // 2. Scroll trigger
+    const onScroll = () => {
+      if (!isOpen.value && !hasInteracted.value && window.scrollY > 1500) {
+        showProactiveGreeting("Вижу, вы изучаете наши услуги. Хотите узнать стоимость вашего проекта?")
+        window.removeEventListener('scroll', onScroll)
+      }
+    }
+    window.addEventListener('scroll', onScroll)
   }
+
+  // Quiz context check
+  const checkQuiz = () => {
+     const quizData = localStorage.getItem('quiz_context')
+     if (quizData && messages.value.length === 0) {
+       if (isOpen.value) {
+         try {
+           const context = JSON.parse(quizData)
+           sendMessage(null, context)
+           localStorage.removeItem('quiz_context')
+         } catch (e) {}
+       }
+     }
+  }
+  
+  // Watch for quiz context if chat is already open or newly opened
+  watch(isOpen, (val) => {
+    if (val) {
+      setTimeout(checkQuiz, 500)
+    }
+  })
+  checkQuiz()
 })
+
+const showProactiveGreeting = (text) => {
+  proactiveGreeting.value = text
+  hasInteracted.value = false // Keep showing pulse
+  playNotificationSound()
+}
 
 const toggleChat = () => {
   isOpen.value = !isOpen.value
   if (isOpen.value) {
     hasInteracted.value = true
+    proactiveGreeting.value = ''
   }
 }
 
-// Save to localStorage continuously
+// Save to localStorage
 watch([messages, hasSubmittedLead, leadForm], () => {
   localStorage.setItem('khudyakov_chat_state', JSON.stringify({
     messages: messages.value,
@@ -188,14 +279,15 @@ watch([messages, hasSubmittedLead, leadForm], () => {
 }, { deep: true })
 
 const clearChat = () => {
-  if (confirm("Вы уверены, что хотите начать новый диалог? Текущая история будет очищена.")) {
+  if (confirm("Вы уверены, что хотите начать новый диалог?")) {
     messages.value = []
     hasInteracted.value = false
     hasSubmittedLead.value = false
     isLeadMode.value = false
+    isTrackingMode.value = false
     leadForm.value = { name: '', contact: '' }
     localStorage.removeItem('khudyakov_chat_state')
-    localStorage.removeItem('khudyakov_chat_history')
+    localStorage.removeItem('quiz_context')
   }
 }
 
@@ -209,52 +301,33 @@ const scrollToBottom = () => {
 
 const toggleLeadMode = () => {
   isLeadMode.value = !isLeadMode.value
-  if (isLeadMode.value) {
-    scrollToBottom()
-  }
+  isTrackingMode.value = false
+  if (isLeadMode.value) scrollToBottom()
 }
 
 const submitLead = async () => {
   if (!leadForm.value.name || !leadForm.value.contact) return
   isSubmittingLead.value = true
-
-  // Format chat history as a readable string
-  let historyString = messages.value.map(m => {
-    const roleName = m.role === 'user' ? 'Клиент' : 'ИИ-Менеджер'
-    return `${roleName}: ${m.text}`
-  }).join('\n\n')
-
+  let historyString = messages.value.map(m => `${m.role === 'user' ? 'Клиент' : 'ИИ'}: ${m.text}`).join('\n\n')
   try {
     await $fetch('/api/leads/', {
       method: 'POST',
-      body: {
-        name: leadForm.value.name,
-        contact: leadForm.value.contact,
-        chat_history: historyString,
-        is_supplement: hasSubmittedLead.value
-      }
+      body: { ...leadForm.value, chat_history: historyString, is_supplement: hasSubmittedLead.value }
     })
-    
-    // Success feedback
     const wasSupplement = hasSubmittedLead.value
     isLeadMode.value = false
     hasSubmittedLead.value = true
-    
-    if (wasSupplement) {
-      messages.value.push({ role: 'assistant', text: '✅ Дополнение успешно отправлено! Мы прикрепили его к вашей заявке.' })
-    } else {
-      messages.value.push({ role: 'assistant', text: '✅ Спасибо! Ваши контакты и наша переписка успешно переданы команде. Если у вас появятся новые вопросы или детали проекта, пишите сюда, а затем нажмите кнопку "📝 Дополнить".' })
-    }
+    messages.value.push({ role: 'assistant', text: wasSupplement ? '✅ Дополнение успешно отправлено!' : '✅ Спасибо! Ваши контакты переданы команде.' })
     scrollToBottom()
   } catch (err) {
-    messages.value.push({ role: 'assistant', text: '❌ Ошибка при отправке заявки. Пожалуйста, напишите нам в Telegram напрямую.' })
+    messages.value.push({ role: 'assistant', text: '❌ Ошибка при отправке заявки.' })
   } finally {
     isSubmittingLead.value = false
   }
 }
 
-const sendMessage = async () => {
-  const text = inputText.value.trim()
+const sendMessage = async (e, quizContext = null) => {
+  const text = quizContext ? `Обсудим проект: ${quizContext.type}` : inputText.value.trim()
   if (!text || isLoading.value) return
 
   hasInteracted.value = true
@@ -274,16 +347,14 @@ const sendMessage = async () => {
       body: { 
         message: text, 
         history,
-        has_submitted_lead: hasSubmittedLead.value 
+        has_submitted_lead: hasSubmittedLead.value,
+        quiz_context: quizContext
       },
     })
 
     messages.value.push({ role: 'assistant', text: response.reply })
   } catch (err) {
-    messages.value.push({
-      role: 'assistant',
-      text: 'Извините, произошла ошибка. Попробуйте позже или свяжитесь с нами напрямую.',
-    })
+    messages.value.push({ role: 'assistant', text: 'Ошибка соединения. Попробуйте позже.' })
   } finally {
     isLoading.value = false
     scrollToBottom()
@@ -617,6 +688,49 @@ const sendMessage = async () => {
   transform: translateY(20px) scale(0.92);
 }
 
+  }
+}
+
+/* ── Proactive Toast ───────────────────── */
+.chat-proactive-toast {
+  position: absolute;
+  bottom: 10px;
+  right: 70px;
+  width: 240px;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--c-border);
+  cursor: pointer;
+  z-index: 1000;
+  animation: slideInRight 0.5s var(--ease-spring);
+}
+
+.chat-proactive-toast__text {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--c-text-primary);
+}
+
+.chat-proactive-toast__close {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  font-size: 0.7rem;
+  opacity: 0.5;
+  padding: 4px;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.block { display: block; }
+.mt-2 { margin-top: 0.5rem; }
+
 /* ── Responsive ───────────────────────── */
 @media (max-width: 480px) {
   .chat-widget {
@@ -647,4 +761,24 @@ const sendMessage = async () => {
     padding: 0.8rem 1.2rem;
   }
 }
+
+.tracking-result {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border);
+  text-align: center;
+}
+
+.tracking-result__status {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.tracking-result__date {
+  font-size: 0.75rem;
+  color: var(--c-text-muted);
+}
+
+.text-xs { font-size: 0.75rem; }
+.text-muted { color: var(--c-text-muted); }
 </style>

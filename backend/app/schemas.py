@@ -118,6 +118,7 @@ class ChatRequest(BaseModel):
     message: str
     history: list[ChatMessage] = []
     has_submitted_lead: bool = False
+    quiz_context: Optional[dict] = None
 
 
 class ChatResponse(BaseModel):
