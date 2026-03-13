@@ -1,7 +1,14 @@
 <template>
   <NuxtLink :to="`/portfolio/${project.slug}`" class="portfolio-card card">
     <div class="portfolio-card__image">
-      <div class="portfolio-card__image-placeholder">
+      <img 
+        v-if="project.image_url" 
+        :src="project.image_url" 
+        :alt="project.title" 
+        class="portfolio-project-img"
+        @error="project.image_url = ''"
+      />
+      <div v-else class="portfolio-card__image-placeholder">
         <span>{{ project.title.charAt(0) }}</span>
       </div>
     </div>
@@ -44,6 +51,18 @@ const tagsList = computed(() =>
   height: 200px;
   overflow: hidden;
   background: var(--c-bg-secondary);
+  position: relative;
+}
+
+.portfolio-project-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.portfolio-card:hover .portfolio-project-img {
+  transform: scale(1.05);
 }
 
 .portfolio-card__image-placeholder {

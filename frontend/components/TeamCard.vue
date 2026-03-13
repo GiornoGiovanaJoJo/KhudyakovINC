@@ -1,7 +1,7 @@
 <template>
   <div class="team-card card" @click="$emit('select', member)" tabindex="0">
     <div class="team-card__avatar">
-      <img v-if="member.photo_url" :src="member.photo_url" :alt="member.name" class="team-card__img" />
+      <img v-if="member.photo_url" :src="member.photo_url" :alt="member.name" class="team-card__img" @error="member.photo_url = ''" />
       <div v-else class="team-card__avatar-placeholder">
         {{ member.name.charAt(0) }}
       </div>

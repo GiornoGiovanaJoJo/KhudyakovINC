@@ -71,6 +71,9 @@ class PortfolioBase(BaseModel):
     image_url: str = ""
     slug: str
     tags: str = ""
+    figma_url: Optional[str] = None
+    external_url: Optional[str] = None
+    gallery: List[str] = []
     order: int = 0
 
 
@@ -85,6 +88,9 @@ class PortfolioUpdate(BaseModel):
     image_url: Optional[str] = None
     slug: Optional[str] = None
     tags: Optional[str] = None
+    figma_url: Optional[str] = None
+    external_url: Optional[str] = None
+    gallery: Optional[List[str]] = None
     order: Optional[int] = None
 
 
@@ -105,6 +111,34 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# ── Users ─────────────────────────────────────────────
+
+class UserBase(BaseModel):
+    phone: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    telegram: Optional[str] = None
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    telegram: Optional[str] = None
+    password: Optional[str] = None
+
+
+class UserResponse(UserBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # ── Chat ──────────────────────────────────────────────
@@ -133,6 +167,7 @@ class LeadBase(BaseModel):
     chat_history: Optional[str] = ""
     ai_summary: Optional[str] = ""
     status: LeadStatus = LeadStatus.NEW
+    user_id: Optional[int] = None
 
 
 class LeadCreate(LeadBase):

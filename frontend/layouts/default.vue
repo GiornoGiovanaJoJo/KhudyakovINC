@@ -19,6 +19,10 @@
           <NuxtLink to="/services" class="header__link" @click="menuOpen = false">Услуги</NuxtLink>
           <NuxtLink to="/portfolio" class="header__link" @click="menuOpen = false">Портфолио</NuxtLink>
           <NuxtLink to="/admin" class="header__link header__link--admin" @click="menuOpen = false">Админка</NuxtLink>
+          <div class="header__auth">
+            <NuxtLink v-if="isLoggedIn" to="/profile" class="header__link" @click="menuOpen = false">Профиль</NuxtLink>
+            <NuxtLink v-else to="/auth/login" class="header__link" @click="menuOpen = false">Вход</NuxtLink>
+          </div>
         </nav>
       </div>
     </header>
@@ -59,7 +63,7 @@
             <h4 class="footer__col-title">Услуги</h4>
             <ul class="footer__links">
               <li><a href="#" class="footer__link">Веб-разработка</a></li>
-              <li><a href="#" class="footer__link">Мобильные приложения</a></li>
+              <li><a href="#" class="footer__link">Сложные сервисы</a></li>
               <li><a href="#" class="footer__link">UI/UX Дизайн</a></li>
               <li><a href="#" class="footer__link">IT-Консалтинг</a></li>
             </ul>
@@ -95,6 +99,13 @@
 
 <script setup>
 const menuOpen = ref(false)
+const isLoggedIn = ref(false)
+
+// Check cookie or token on mount
+onMounted(() => {
+  const token = localStorage.getItem('auth_token')
+  isLoggedIn.value = !!token
+})
 </script>
 
 <style scoped>

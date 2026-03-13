@@ -7,7 +7,8 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import Lead, LeadStatus
 from ..schemas import LeadCreate, LeadResponse, LeadUpdate
-from ..auth import get_current_admin
+from ..auth import get_current_admin, get_current_user
+from typing import List, Optional
 from fastapi import Request
 from ..utils.pdf_gen import generate_proposal_pdf
 from dotenv import load_dotenv
@@ -72,7 +73,19 @@ async def generate_lead_summary(chat_history: str) -> str:
 
 
 @router.post("/")
-async def create_lead(lead: LeadCreate, db: AsyncSession = Depends(get_db)):
+async def create_lead(
+    lead: LeadCreate, 
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user)
+):
+    # Determine user_id if logged in
+    user_id = None
+    if current_user:
+        try:
+            user_id = int(current_user["id"])
+        except (ValueError, TypeError, KeyError):
+            pass
+
     # Генерируем ИИ-саммари на основе диалога
     summary = await generate_lead_summary(lead.chat_history)
 
@@ -82,7 +95,8 @@ async def create_lead(lead: LeadCreate, db: AsyncSession = Depends(get_db)):
         contact=lead.contact,
         chat_history=lead.chat_history,
         ai_summary=summary,
-        status=LeadStatus.NEW
+        status=LeadStatus.NEW,
+        user_id=user_id
     )
     db.add(db_lead)
     await db.commit()

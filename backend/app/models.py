@@ -1,6 +1,7 @@
 import datetime
 from enum import Enum
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Enum as SQLEnum
+from sqlalchemy.orm import relationship
 from .database import Base
 
 
@@ -12,15 +13,22 @@ class LeadStatus(str, Enum):
 
 
 class TeamMember(Base):
-    __tablename__ = "team_members"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    position = Column(String(100), nullable=False)
-    stack = Column(String(255), nullable=False)
-    description = Column(Text, nullable=False, default="")
     photo_url = Column(String(500), nullable=True, default="")
     order = Column(Integer, default=0)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    phone = Column(String(20), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    full_name = Column(String(100), nullable=True)
+    email = Column(String(100), nullable=True)
+    telegram = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    leads = relationship("Lead", back_populates="user")
 
 
 class Service(Base):
@@ -43,6 +51,9 @@ class PortfolioProject(Base):
     image_url = Column(String(500), nullable=True, default="")
     slug = Column(String(200), unique=True, nullable=False)
     tags = Column(String(500), nullable=True, default="")
+    figma_url = Column(String(500), nullable=True)
+    external_url = Column(String(500), nullable=True)
+    gallery = Column(JSON, nullable=True, default=[])  # List of image URLs
     order = Column(Integer, default=0)
 
 
@@ -55,4 +66,7 @@ class Lead(Base):
     chat_history = Column(Text, nullable=True)
     ai_summary = Column(Text, nullable=True)
     status = Column(SQLEnum(LeadStatus), default=LeadStatus.NEW)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="leads")
