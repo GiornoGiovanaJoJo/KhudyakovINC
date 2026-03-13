@@ -688,8 +688,6 @@ const sendMessage = async (e, quizContext = null) => {
   transform: translateY(20px) scale(0.92);
 }
 
-  }
-}
 
 /* ── Proactive Toast ───────────────────── */
 .chat-proactive-toast {
