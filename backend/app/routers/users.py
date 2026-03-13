@@ -16,7 +16,7 @@ async def get_me(
     user_id = int(current_user["id"])
     db_user = await db.get(User, user_id)
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="User not found")
     return db_user
 
 @router.get("/my-leads", response_model=list[LeadResponse])

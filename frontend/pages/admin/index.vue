@@ -340,10 +340,12 @@ const fieldDefs = {
   ],
   portfolio: [
     { key: 'title', label: 'Название' },
-    { key: 'slug', label: 'Slug (URL)' },
+    { key: 'slug', label: 'Slug (для адресной строки, например: my-project)' },
     { key: 'short_description', label: 'Краткое описание', type: 'textarea' },
     { key: 'full_description', label: 'Полное описание', type: 'textarea' },
     { key: 'image_url', label: 'URL изображения' },
+    { key: 'external_url', label: 'Живая ссылка (сайт проекта)' },
+    { key: 'figma_url', label: 'Figma URL (для прототипа)' },
     { key: 'tags', label: 'Теги (через запятую)' },
     { key: 'order', label: 'Порядок', type: 'number' },
   ],
