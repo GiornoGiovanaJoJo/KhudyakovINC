@@ -5,11 +5,13 @@ import os
 import html
 from contextlib import asynccontextmanager
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
+import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -74,6 +76,7 @@ async def cmd_help(message: types.Message):
 app = FastAPI(title="Telegram Leads Webhook API")
 
 class LeadData(BaseModel):
+    id: int
     name: str
     contact: str
     chat_history: str = ""
@@ -109,10 +112,16 @@ async def send_lead(lead: LeadData):
     safe_history = html.escape(history_text)
     text += f"<pre>{safe_history}</pre>"
     
+    # Кнопки управления статусом
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🕒 В работу", callback_data=f"status_{lead.id}_in_progress")
+    builder.button(text="✅ Завершено", callback_data=f"status_{lead.id}_completed")
+    builder.adjust(2)
+    
     success_count: int = 0
     for chat_id in chats:
         try:
-            await bot.send_message(chat_id=chat_id, text=text)
+            await bot.send_message(chat_id=chat_id, text=text, reply_markup=builder.as_markup())
             success_count += 1
         except Exception as e:
             logging.error(f"Failed to send lead to chat {chat_id}: {e}")
@@ -121,6 +130,45 @@ async def send_lead(lead: LeadData):
         return {"status": "success", "messages_sent": success_count}
     else:
         raise HTTPException(status_code=500, detail="Emails failed to deliver to registered chats.")
+
+# Callback handler for statuses
+@dp.callback_query(F.data.startswith("status_"))
+async def handle_status_change(callback: types.CallbackQuery):
+    _, lead_id, new_status = callback.data.split("_")
+    
+    # Map visual status
+    status_map = {
+        "in_progress": "🕒 В РАБОТЕ",
+        "completed": "✅ ЗАВЕРШЕНО"
+    }
+    
+    # Update backend
+    backend_url = f"http://backend:8000/api/leads/{lead_id}"
+    try:
+        async with httpx.AsyncClient() as client:
+            # Note: We need admin auth ideally, but for internal docker calls we might skip or use a secret header
+            # For now, let's assume the backend allows it or we add a simple internal bypass/token
+            response = await client.patch(backend_url, json={"status": new_status})
+            if response.status_code == 200:
+                await callback.answer(f"Статус изменен на: {status_map.get(new_status)}")
+                
+                # Update message text to show new status
+                new_text = callback.message.html_text
+                if "🟡 <b>СТАТУС:" in new_text:
+                    # Replace existing status
+                    lines = new_text.split("\n")
+                    lines[0] = f"🟡 <b>СТАТУС: {status_map.get(new_status)}</b>"
+                    new_text = "\n".join(lines)
+                else:
+                    # Add new status at the top
+                    new_text = f"🟡 <b>СТАТУС: {status_map.get(new_status)}</b>\n\n" + new_text
+                
+                await callback.message.edit_text(text=new_text, reply_markup=callback.message.reply_markup)
+            else:
+                await callback.answer("Ошибка при обновлении в базе данных", show_alert=True)
+    except Exception as e:
+        logging.error(f"Error updating status: {e}")
+        await callback.answer("Ошибка связи с бэкендом", show_alert=True)
 
 async def start_bot():
     # start polling

@@ -1,5 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
+from .models import LeadStatus
 
 
 # ── Team ──────────────────────────────────────────────
@@ -120,3 +122,29 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+
+# ── Leads ─────────────────────────────────────────────
+
+class LeadBase(BaseModel):
+    name: str
+    contact: str
+    chat_history: Optional[str] = ""
+    ai_summary: Optional[str] = ""
+    status: LeadStatus = LeadStatus.NEW
+
+
+class LeadCreate(LeadBase):
+    is_supplement: bool = False
+
+
+class LeadUpdate(BaseModel):
+    status: Optional[LeadStatus] = None
+
+
+class LeadResponse(LeadBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

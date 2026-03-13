@@ -19,6 +19,51 @@
         </button>
       </div>
 
+      <!-- Leads Tab -->
+      <div v-if="activeTab === 'leads'" class="admin-section">
+        <div class="admin-section__header">
+          <h2>Входящие заявки (CRM)</h2>
+        </div>
+
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Имя</th>
+                <th>Контакт</th>
+                <th>Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="lead in leadsList" :key="lead.id">
+                <td>{{ formatDate(lead.created_at) }}</td>
+                <td>{{ lead.name }}</td>
+                <td>{{ lead.contact }}</td>
+                <td>
+                  <select 
+                    v-model="lead.status" 
+                    @change="updateLeadStatus(lead)"
+                    class="status-select"
+                    :class="'status-' + lead.status"
+                  >
+                    <option value="new">🆕 Новая</option>
+                    <option value="in_progress">🕒 В работе</option>
+                    <option value="completed">✅ Сделано</option>
+                    <option value="rejected">❌ Отказ</option>
+                  </select>
+                </td>
+                <td class="admin-table__actions">
+                  <button class="btn btn-outline btn-sm" @click="viewLead(lead)" title="Посмотреть детали">👁️</button>
+                  <button class="btn btn-outline btn-sm" @click="downloadProposal(lead.id, lead.name)" title="Скачать КП">📄</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Team Tab -->
       <div v-if="activeTab === 'team'" class="admin-section">
         <div class="admin-section__header">
@@ -176,6 +221,39 @@
           </div>
         </div>
       </Teleport>
+
+      <!-- Lead Detail Modal -->
+      <Teleport to="body">
+        <div v-if="showLeadModal" class="modal-overlay" @click.self="showLeadModal = false">
+          <div class="modal-content" style="max-width: 800px">
+            <button class="admin-modal-close" @click="showLeadModal = false">&times;</button>
+            <h2 class="mb-md">Заявка от {{ selectedLead?.name }}</h2>
+            <div class="lead-detail-content">
+              <div class="mb-lg">
+                <strong>Контакт:</strong> {{ selectedLead?.contact }} <br>
+                <strong>Дата:</strong> {{ formatDate(selectedLead?.created_at) }}
+              </div>
+
+              <h3>🧠 Анализ ИИ</h3>
+              <div class="lead-ai-summary">
+                {{ selectedLead?.ai_summary || 'Анализ отсутствует' }}
+              </div>
+
+              <h3>💬 История чата</h3>
+              <div class="lead-history">
+                {{ selectedLead?.chat_history || 'История пуста' }}
+              </div>
+            </div>
+            
+            <div class="admin-form__actions">
+              <button class="btn btn-primary" @click="downloadProposal(selectedLead.id, selectedLead.name)">
+                📄 Скачать КП (PDF)
+              </button>
+              <button class="btn btn-outline" @click="showLeadModal = false">Закрыть</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </div>
   </div>
 </template>
@@ -187,9 +265,10 @@ const tabs = [
   { key: 'team', label: 'Команда', icon: '👥' },
   { key: 'services', label: 'Услуги', icon: '🛠️' },
   { key: 'portfolio', label: 'Портфолио', icon: '💼' },
+  { key: 'leads', label: 'Заявки', icon: '📩' },
 ]
 
-const activeTab = ref('team')
+const activeTab = ref('leads')
 const showModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
@@ -200,6 +279,9 @@ const uploadingField = ref(null)
 const teamList = ref([])
 const servicesList = ref([])
 const portfolioList = ref([])
+const leadsList = ref([])
+const selectedLead = ref(null)
+const showLeadModal = ref(false)
 
 // Auth check
 const token = ref('')
@@ -221,14 +303,16 @@ const authHeaders = () => ({
 
 const loadAll = async () => {
   try {
-    const [t, s, p] = await Promise.all([
+    const [t, s, p, l] = await Promise.all([
       $fetch('/api/team/'),
       $fetch('/api/services/'),
       $fetch('/api/portfolio/'),
+      $fetch('/api/leads/', { headers: authHeaders() }),
     ])
     teamList.value = t
     servicesList.value = s
     portfolioList.value = p
+    leadsList.value = l
   } catch (e) {
     console.error('Ошибка загрузки данных:', e)
   }
@@ -319,6 +403,53 @@ const saveItem = async () => {
   } catch (e) {
     alert('Ошибка сохранения: ' + (e.data?.detail || e.message))
   }
+}
+
+const updateLeadStatus = async (lead) => {
+  try {
+    await $fetch(`/api/leads/${lead.id}`, {
+      method: 'PATCH',
+      body: { status: lead.status },
+      headers: authHeaders(),
+    })
+  } catch (e) {
+    alert('Ошибка обновления статуса: ' + (e.data?.detail || e.message))
+    await loadAll() // Rollback UI if failed
+  }
+}
+
+const viewLead = (lead) => {
+  selectedLead.value = lead
+  showLeadModal.value = true
+}
+
+const downloadProposal = async (id, name) => {
+  try {
+    const response = await fetch(`/api/leads/${id}/proposal`, {
+      headers: authHeaders()
+    })
+    if (!response.ok) throw new Error('Не удалось скачать файл')
+    
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Proposal_${name.replace(/\s+/g, '_')}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('Ошибка скачивания: ' + e.message)
+  }
+}
+
+const formatDate = (dateStr) => {
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const deleteItem = async (type, id) => {
@@ -543,5 +674,48 @@ const logout = () => {
 
 .mb-2 {
   margin-bottom: 0.5rem;
+}
+
+/* ── Status Selects ──────────────────── */
+.status-select {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-glass);
+  color: var(--c-text-primary);
+  outline: none;
+  cursor: pointer;
+}
+
+.status-new { border-color: var(--c-accent); color: var(--c-accent-light); }
+.status-in_progress { border-color: #f59e0b; color: #fbbf24; }
+.status-completed { border-color: #10b981; color: #34d399; }
+.status-rejected { border-color: #ef4444; color: #f87171; }
+
+/* ── Lead Detail Modal ───────────────── */
+.lead-detail-content {
+  color: var(--c-text-secondary);
+}
+
+.lead-ai-summary {
+  background: var(--c-bg-glass);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--c-accent);
+  margin-bottom: var(--space-lg);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.lead-history {
+  font-size: 0.85rem;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #0f172a;
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
 }
 </style>

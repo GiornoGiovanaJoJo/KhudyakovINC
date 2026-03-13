@@ -156,6 +156,19 @@ onMounted(() => {
       }
     }, 3000)
   }
+
+  // Check for quiz results or initial message
+  const initialMsg = localStorage.getItem('chat_initial_message')
+  if (initialMsg && messages.value.length === 0) {
+    // We wait a bit for the animation to look natural if the chat is opened via quiz
+    setTimeout(() => {
+      if (isOpen.value) {
+        inputText.value = initialMsg
+        sendMessage()
+        localStorage.removeItem('chat_initial_message')
+      }
+    }, 500)
+  }
 })
 
 const toggleChat = () => {

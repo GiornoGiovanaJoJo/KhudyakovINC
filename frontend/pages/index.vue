@@ -37,6 +37,35 @@
       </div>
     </section>
 
+    <!-- Project Quiz (Kwiz) -->
+    <section class="section quiz-bg">
+      <div class="container">
+        <div class="quiz-card glass">
+          <div v-if="!quizCompleted">
+            <div class="quiz-progress">
+              <div class="quiz-progress__bar" :style="{ width: ((quizStep + 1) / quizSteps.length) * 100 + '%' }"></div>
+            </div>
+            <h2 class="quiz-title">{{ quizSteps[quizStep].question }}</h2>
+            <div class="quiz-options">
+              <button
+                v-for="option in quizSteps[quizStep].options"
+                :key="option"
+                class="quiz-option"
+                @click="selectOption(option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </div>
+          <div v-else class="text-center">
+            <h2 class="quiz-title">Отлично! Мы почти готовы</h2>
+            <p class="mb-lg">Я подготовил предварительный план на основе ваших ответов. Давайте обсудим детали в чате.</p>
+            <button class="btn btn-primary" @click="startChatWithQuiz">💬 Обсудить в чате</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Services Overview -->
     <section class="section">
       <div class="container">
@@ -153,7 +182,37 @@
       </div>
     </section>
 
-    <!-- Team Modal -->
+    <!-- Tech Stack -->
+    <section class="section" style="background: var(--c-bg-secondary)">
+      <div class="container">
+        <h2 class="section__title">Наш технологический стек</h2>
+        <div class="tech-grid">
+          <div v-for="tech in techStack" :key="tech.name" class="tech-item glass">
+            <span class="tech-icon">{{ tech.icon }}</span>
+            <span class="tech-name">{{ tech.name }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section testimonials-bg">
+      <div class="container">
+        <h2 class="section__title">Что говорят клиенты</h2>
+        <div class="testimonials-slider">
+          <div v-for="t in testimonials" :key="t.name" class="testimonial-card glass">
+            <p class="testimonial-text">"{{ t.text }}"</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">{{ t.name[0] }}</div>
+              <div>
+                <div class="testimonial-name">{{ t.name }}</div>
+                <div class="testimonial-role">{{ t.role }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
     <TeamModal
       v-if="selectedMember"
       :member="selectedMember"
@@ -183,6 +242,56 @@ const selectedMember = ref(null)
 const team = ref([])
 const portfolio = ref([])
 const services = ref([])
+
+// Quiz Logic
+const quizStep = ref(0)
+const quizCompleted = ref(false)
+const quizAnswers = ref([])
+const quizSteps = [
+  {
+    question: "Тип вашего проекта?",
+    options: ["Веб-сайт", "Интернет-магазин", "Сложный сервис", "Мобильное приложение", "Консультация"]
+  },
+  {
+    question: "Нужен ли дизайн?",
+    options: ["Да, с нуля", "Есть свой макет", "Нужен редизайн", "Не требуется"]
+  },
+  {
+    question: "Примерные сроки?",
+    options: ["Как можно быстрее", "1-2 месяца", "Более 3 месяцев", "Пока обсуждаемо"]
+  }
+]
+
+const selectOption = (option) => {
+  quizAnswers.value.push(option)
+  if (quizStep.value < quizSteps.length - 1) {
+    quizStep.value++
+  } else {
+    quizCompleted.value = true
+  }
+}
+
+const startChatWithQuiz = () => {
+  const context = `Я прошел квиз: Тип: ${quizAnswers.value[0]}, Дизайн: ${quizAnswers.value[1]}, Сроки: ${quizAnswers.value[2]}. Расскажи подробнее про такие проекты.`
+  localStorage.setItem('chat_initial_message', context)
+  openChat()
+}
+
+// Content Data
+const techStack = [
+  { name: "Vue / Nuxt", icon: "🟢" },
+  { name: "Node.js", icon: "📦" },
+  { name: "Python / FastAPI", icon: "🐍" },
+  { name: "PostgreSQL", icon: "🐘" },
+  { name: "Docker", icon: "🐳" },
+  { name: "Figma", icon: "🎨" }
+]
+
+const testimonials = [
+  { name: "Александр В.", role: "CEO TechStart", text: "Профессиональный подход и высокая скорость разработки. Реализовали сложную CRM за рекордные сроки." },
+  { name: "Мария К.", role: "Marketing Director", text: "Студия помогла нам полностью переосмыслить дизайн. Конверсия на сайте выросла в 2 раза!" },
+  { name: "Иван П.", role: "Founder RetailPro", text: "Надежные ребята. Поддержка 24/7 и качественный код. Работаем на постоянной основе." }
+]
 
 // Fetch data
 const [{ data: teamData }, { data: portfolioData }, { data: servicesData }] = await Promise.all([
@@ -343,5 +452,157 @@ const openChat = () => {
     flex-direction: column;
     align-items: center;
   }
+}
+
+/* ── Quiz ──────────────────────────────────── */
+.quiz-bg {
+  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+}
+
+.quiz-card {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-2xl);
+  border-radius: var(--radius-lg);
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.quiz-progress {
+  height: 4px;
+  background: var(--c-bg-card);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-xl);
+  overflow: hidden;
+}
+
+.quiz-progress__bar {
+  height: 100%;
+  background: var(--c-accent);
+  transition: width 0.4s var(--ease-out);
+}
+
+.quiz-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.quiz-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+}
+
+.quiz-option {
+  padding: 1rem;
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  color: var(--c-text-secondary);
+  font-family: var(--font-main);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.quiz-option:hover {
+  background: var(--c-bg-glass);
+  border-color: var(--c-accent);
+  color: var(--c-text-primary);
+  transform: translateY(-2px);
+}
+
+/* ── Tech Stack ────────────────────────────── */
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-2xl);
+}
+
+.tech-item {
+  padding: var(--space-lg);
+  text-align: center;
+  border-radius: var(--radius-md);
+  transition: transform 0.3s;
+}
+
+.tech-item:hover {
+  transform: translateY(-5px);
+}
+
+.tech-icon {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: var(--space-sm);
+}
+
+.tech-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+}
+
+/* ── Testimonials ──────────────────────────── */
+.testimonials-bg {
+  background: radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+}
+
+.testimonials-slider {
+  display: flex;
+  gap: var(--space-xl);
+  overflow-x: auto;
+  padding: var(--space-xl) var(--space-sm);
+  scrollbar-width: none;
+}
+
+.testimonials-slider::-webkit-scrollbar { display: none; }
+
+.testimonial-card {
+  min-width: 320px;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.testimonial-text {
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: var(--space-xl);
+  flex-grow: 1;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.testimonial-avatar {
+  width: 45px;
+  height: 45px;
+  background: var(--c-gradient-1);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: white;
+}
+
+.testimonial-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.testimonial-role {
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
 }
 </style>
