@@ -2,7 +2,9 @@
   <div>
     <!-- Hero Section -->
     <section class="hero">
-      <div class="hero__bg"></div>
+      <div class="hero__bg">
+        <img src="/images/abstract_hero.png" alt="Abstract Background" class="hero__bg-img" />
+      </div>
       <div class="container hero__content">
         <div class="hero__badge">🚀 Команда профессионалов</div>
         <h1 class="hero__title">
@@ -35,8 +37,80 @@
       </div>
     </section>
 
+    <!-- Services Overview -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section__title">Что мы умеем</h2>
+        <p class="section__subtitle">
+          Мы предлагаем комплексные решения для запуска и развития вашего бизнеса в цифровой среде.
+        </p>
+        <div class="grid-3">
+          <ServiceCard
+            v-for="service in topServices"
+            :key="service.id"
+            :service="service"
+          />
+        </div>
+        <div class="text-center mt-xl">
+          <NuxtLink to="/services" class="btn btn-outline">Посмотреть все услуги</NuxtLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio Highlights -->
+    <section class="section" style="background: var(--c-bg-secondary)">
+      <div class="container">
+        <h2 class="section__title">Наши работы</h2>
+        <p class="section__subtitle">
+          Проекты, которыми мы гордимся. Каждый из них — это уникальное решение сложной задачи.
+        </p>
+        <div class="grid-3" v-if="portfolio.length">
+          <PortfolioCard
+            v-for="project in portfolio.slice(0, 3)"
+            :key="project.id"
+            :project="project"
+          />
+        </div>
+        <div class="text-center mt-xl">
+          <NuxtLink to="/portfolio" class="btn btn-outline">Весь портфель</NuxtLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- How We Work -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section__title">Как мы работаем</h2>
+        <p class="section__subtitle">
+          Наш процесс прозрачен и эффективен. Мы сопровождаем вас на каждом этапе создания продукта.
+        </p>
+        <div class="process-grid">
+          <div class="process-step">
+            <div class="process-step__number">01</div>
+            <h3 class="process-step__title">Аналитика</h3>
+            <p class="process-step__desc">Погружаемся в ваш бизнес, определяем цели и требования.</p>
+          </div>
+          <div class="process-step">
+            <div class="process-step__number">02</div>
+            <h3 class="process-step__title">Дизайн</h3>
+            <p class="process-step__desc">Создаем удобные и современные интерфейсы (UI/UX).</p>
+          </div>
+          <div class="process-step">
+            <div class="process-step__number">03</div>
+            <h3 class="process-step__title">Разработка</h3>
+            <p class="process-step__desc">Пишем чистый код, используя передовой стек технологий.</p>
+          </div>
+          <div class="process-step">
+            <div class="process-step__number">04</div>
+            <h3 class="process-step__title">Запуск</h3>
+            <p class="process-step__desc">Тестируем и выводим проект на рынок, обеспечивая поддержку.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Team Section -->
-    <section class="section" id="team">
+    <section class="section" id="team" style="background: var(--c-bg-secondary)">
       <div class="container">
         <h2 class="section__title">Наша команда</h2>
         <p class="section__subtitle">
@@ -55,6 +129,27 @@
         <p v-else class="text-center" style="color: var(--c-text-muted)">
           Загрузка команды...
         </p>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section__title">Часто задаваемые вопросы</h2>
+        <div class="faq-list">
+          <div class="faq-item">
+            <h3 class="faq-item__question">Сколько времени занимает разработка?</h3>
+            <p class="faq-item__answer">Сроки зависят от сложности проекта. Корпоративный сайт — от 2 недель, сложный сервис или CRM — от 1.5 месяцев.</p>
+          </div>
+          <div class="faq-item">
+            <h3 class="faq-item__question">Какие технологии вы используете?</h3>
+            <p class="faq-item__answer">Мы работаем с современным стеком: Vue.js/Nuxt.js, React, Node.js, Python (FastAPI/Django), PostgreSQL и Docker.</p>
+          </div>
+          <div class="faq-item">
+            <h3 class="faq-item__question">Оказываете ли вы поддержку после запуска?</h3>
+            <p class="faq-item__answer">Да, мы предлагаем гарантийное обслуживание в течение года и услуги по развитию вашего продукта.</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -86,25 +181,21 @@ useHead({
 
 const selectedMember = ref(null)
 const team = ref([])
+const portfolio = ref([])
+const services = ref([])
 
-// Use lazy fetch to avoid blocking navigation and ensure client-side rendering
-const { data, refresh } = await useFetch('/api/team/', {
-  lazy: true,
-  server: false // Ensure it runs on client for consistent behavior if server-side state is stale
-})
+// Fetch data
+const [{ data: teamData }, { data: portfolioData }, { data: servicesData }] = await Promise.all([
+  useFetch('/api/team/', { lazy: true, server: false }),
+  useFetch('/api/portfolio/', { lazy: true, server: false }),
+  useFetch('/api/services/', { lazy: true, server: false })
+])
 
-watch(data, (newData) => {
-  if (newData) {
-    team.value = newData
-  }
-}, { immediate: true })
+watch(teamData, (val) => { if (val) team.value = val }, { immediate: true })
+watch(portfolioData, (val) => { if (val) portfolio.value = val }, { immediate: true })
+watch(servicesData, (val) => { if (val) services.value = val }, { immediate: true })
 
-// Force refresh on mount just in case
-onMounted(() => {
-  if (!team.value.length) {
-    refresh()
-  }
-})
+const topServices = computed(() => services.value.slice(0, 3))
 
 const openChat = () => {
   const toggle = document.getElementById('chat-toggle')
@@ -141,6 +232,14 @@ const openChat = () => {
   transform: translateX(-50%);
   filter: blur(80px);
   opacity: 0.5;
+}
+
+.hero__bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+  filter: saturate(1.2) brightness(0.8);
 }
 
 .hero__content {

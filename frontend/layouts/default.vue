@@ -31,13 +31,59 @@
     <!-- Footer -->
     <footer class="footer">
       <div class="container footer__inner">
-        <div class="footer__brand">
-          <span class="header__logo-icon">⚡</span>
-          <span class="header__logo-text">Khudyakov<span class="text-gradient">Inc.</span></span>
-          <p class="footer__desc">Создаём цифровые продукты, которые решают бизнес-задачи.</p>
+        <div class="footer__grid">
+          <!-- Brand -->
+          <div class="footer__brand">
+            <NuxtLink to="/" class="header__logo mb-sm">
+              <span class="header__logo-icon">⚡</span>
+              <span class="header__logo-text">Khudyakov<span class="text-gradient">Inc.</span></span>
+            </NuxtLink>
+            <p class="footer__desc" style="text-align: left; max-width: 300px;">
+              Создаём премиальные цифровые продукты, которые помогают вашему бизнесу расти и выделяться на рынке.
+            </p>
+          </div>
+
+          <!-- Navigation -->
+          <div class="footer__col">
+            <h4 class="footer__col-title">Навигация</h4>
+            <ul class="footer__links">
+              <li><NuxtLink to="/" class="footer__link">Главная</NuxtLink></li>
+              <li><NuxtLink to="/services" class="footer__link">Услуги</NuxtLink></li>
+              <li><NuxtLink to="/portfolio" class="footer__link">Портфолио</NuxtLink></li>
+              <li><NuxtLink to="/admin" class="footer__link">Админка</NuxtLink></li>
+            </ul>
+          </div>
+
+          <!-- Services -->
+          <div class="footer__col">
+            <h4 class="footer__col-title">Услуги</h4>
+            <ul class="footer__links">
+              <li><a href="#" class="footer__link">Веб-разработка</a></li>
+              <li><a href="#" class="footer__link">Мобильные приложения</a></li>
+              <li><a href="#" class="footer__link">UI/UX Дизайн</a></li>
+              <li><a href="#" class="footer__link">IT-Консалтинг</a></li>
+            </ul>
+          </div>
+
+          <!-- Contact -->
+          <div class="footer__col">
+            <h4 class="footer__col-title">Контакты</h4>
+            <div class="footer__contact-item">
+              <span>📍</span> г. Москва, ул. Примерная, 10
+            </div>
+            <div class="footer__contact-item">
+              <span>📧</span> hello@khudyakov.inc
+            </div>
+            <div class="footer__contact-item">
+              <span>📞</span> +7 (999) 000-00-00
+            </div>
+          </div>
         </div>
-        <div class="footer__copy">
-          &copy; {{ new Date().getFullYear() }} Khudyakov Inc. Все права защищены.
+
+        <div class="footer__bottom" style="margin-top: var(--space-3xl); padding-top: var(--space-xl); border-top: 1px solid var(--c-border); width: 100%;">
+          <div class="footer__copy">
+            &copy; {{ new Date().getFullYear() }} Khudyakov Inc. Все права защищены.
+          </div>
         </div>
       </div>
     </footer>
