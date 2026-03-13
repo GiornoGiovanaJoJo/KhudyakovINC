@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import html
 from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher, types
@@ -85,23 +86,28 @@ async def send_lead(lead: LeadData):
     if not chats:
         raise HTTPException(status_code=400, detail="No active Telegram chats registered.")
 
+    safe_name = html.escape(lead.name)
+    safe_contact = html.escape(lead.contact)
+    
     if lead.is_supplement:
         text = f"➕ <b>ДОПОЛНЕНИЕ К ЗАЯВКЕ!</b>\n\n"
     else:
         text = f"🔥 <b>Новая заявка с сайта!</b>\n\n"
         
-    text += f"👤 <b>Имя:</b> {lead.name}\n"
-    text += f"📞 <b>Контакт:</b> {lead.contact}\n\n"
+    text += f"👤 <b>Имя:</b> {safe_name}\n"
+    text += f"📞 <b>Контакт:</b> {safe_contact}\n\n"
     
     if lead.ai_summary:
+        safe_summary = html.escape(lead.ai_summary[:1000])
         text += f"🤖 <b>AI РЕЗЮМЕ ПРОЕКТА:</b>\n"
-        text += f"<i>{lead.ai_summary}</i>\n\n"
+        text += f"<i>{safe_summary}</i>\n\n"
 
     text += f"💬 <b>Полная история чата:</b>\n"
     
-    # Режем историю если она слишком большая
+    # Режем историю и экранируем HTML
     history_text = lead.chat_history[:3000] if lead.chat_history else "Нет истории"
-    text += f"<pre>{history_text}</pre>"
+    safe_history = html.escape(history_text)
+    text += f"<pre>{safe_history}</pre>"
     
     success_count: int = 0
     for chat_id in chats:

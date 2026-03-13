@@ -84,9 +84,9 @@ async def create_lead(lead: LeadCreate):
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(url, json=payload)
             if response.status_code != 200:
-                print(f"[ERROR] Bot microservice returned {response.status_code}: {response.text}")
-                # Don't strictly throw if bot fails, just warn
-                return {"status": "warning", "message": "Lead received but bot failed to broadcast."}
+                error_msg = f"Bot service error: {response.status_code} {response.text}"
+                print(f"[ERROR] {error_msg}")
+                raise HTTPException(status_code=500, detail="Не удалось отправить уведомление в Telegram.")
             return {"status": "success", "message": "Lead safely forwarded to Telegram bot."}
     except httpx.RequestError as e:
         print(f"[ERROR] Failed to contact Telegram bot microservice: {str(e)}")
