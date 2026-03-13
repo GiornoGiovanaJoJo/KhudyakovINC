@@ -10,7 +10,7 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
           name: 'description',
-          content: 'Khudyakov Inc. — команда профессионалов: веб-разработка, мобильные приложения, UI/UX дизайн, DevOps и IT-консалтинг.',
+          content: 'Khudyakov Inc. — команда профессионалов: веб-разработка, UI/UX дизайн, DevOps и IT-консалтинг.',
         },
       ],
       link: [

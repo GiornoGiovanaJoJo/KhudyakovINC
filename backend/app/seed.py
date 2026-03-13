@@ -64,34 +64,16 @@ async def seed():
                 order=1,
             ),
             Service(
-                title="Мобильная разработка",
-                description="Разработка кроссплатформенных мобильных приложений на React Native и Flutter.",
-                icon="📱",
-                order=2,
-            ),
-            Service(
                 title="UI/UX Дизайн",
                 description="Проектирование пользовательских интерфейсов, прототипирование, создание дизайн-систем.",
                 icon="🎨",
-                order=3,
-            ),
-            Service(
-                title="DevOps & Инфраструктура",
-                description="Настройка CI/CD, контейнеризация, мониторинг, облачная инфраструктура (AWS, Yandex Cloud).",
-                icon="⚙️",
-                order=4,
-            ),
-            Service(
-                title="Интеграция ИИ",
-                description="Внедрение чат-ботов, рекомендательных систем и решений на основе машинного обучения.",
-                icon="🤖",
-                order=5,
+                order=2,
             ),
             Service(
                 title="IT-консалтинг",
                 description="Аудит IT-инфраструктуры, выбор технологий, планирование архитектуры, оптимизация процессов.",
                 icon="💼",
-                order=6,
+                order=5,
             ),
         ]
         db.add_all(services)
@@ -125,21 +107,6 @@ async def seed():
                 slug="logistics-crm",
                 tags="React, Node.js, PostgreSQL, WebSocket",
                 order=2,
-            ),
-            PortfolioProject(
-                title="Мобильное приложение доставки",
-                short_description="Кроссплатформенное приложение с трекингом курьера и push-уведомлениями.",
-                full_description=(
-                    "Мобильное приложение для сервиса доставки еды. "
-                    "Два приложения: для клиентов и курьеров. Каталог ресторанов, "
-                    "корзина, отслеживание курьера в реальном времени, push-уведомления, "
-                    "история заказов, рейтинги и отзывы. "
-                    "Стек: React Native, FastAPI, PostgreSQL, Firebase."
-                ),
-                image_url="/images/portfolio/delivery.jpg",
-                slug="delivery-app",
-                tags="React Native, FastAPI, Firebase",
-                order=3,
             ),
         ]
         db.add_all(portfolio)

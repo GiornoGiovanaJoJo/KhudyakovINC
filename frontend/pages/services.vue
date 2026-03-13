@@ -38,7 +38,7 @@ useHead({
     {
       name: 'description',
       content:
-        'Веб-разработка, мобильные приложения, UI/UX дизайн, DevOps и IT-консалтинг от команды Khudyakov Inc.',
+        'Веб-разработка, UI/UX дизайн, DevOps и IT-консалтинг от команды Khudyakov Inc.',
     },
   ],
 })
