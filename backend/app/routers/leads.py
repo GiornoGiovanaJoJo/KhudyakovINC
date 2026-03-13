@@ -7,7 +7,7 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import Lead, LeadStatus
 from ..schemas import LeadCreate, LeadResponse, LeadUpdate
-from ..auth import get_current_user
+from ..auth import get_current_admin
 from ..utils.pdf_gen import generate_proposal_pdf
 from dotenv import load_dotenv
 
@@ -113,7 +113,7 @@ async def create_lead(lead: LeadCreate, db: AsyncSession = Depends(get_db)):
 @router.get("/", response_model=list[LeadResponse])
 async def get_leads(
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    admin_username: str = Depends(get_current_admin)
 ):
     result = await db.execute(select(Lead).order_by(Lead.created_at.desc()))
     return result.scalars().all()
@@ -124,7 +124,7 @@ async def update_lead(
     lead_id: int,
     lead_update: LeadUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    admin_username: str = Depends(get_current_admin)
 ):
     db_lead = await db.get(Lead, lead_id)
     if not db_lead:
@@ -142,7 +142,7 @@ async def update_lead(
 async def get_lead_proposal(
     lead_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    admin_username: str = Depends(get_current_admin)
 ):
     db_lead = await db.get(Lead, lead_id)
     if not db_lead or not db_lead.ai_summary:
