@@ -17,42 +17,39 @@ async def seed():
         # ── Команда ───────────────────────────────────
         team = [
             TeamMember(
-                name="Александр Худяков",
-                position="CEO / Full-Stack Developer",
-                stack="Python, FastAPI, Vue, Nuxt, Node.js, PostgreSQL",
+                name="Сергеева Полина Дмитриевна",
+                position="Multimedia Designer",
+                stack="Figma, Adobe Illustrator, Adobe Photoshop, Procreate, After Effects, SketchUp, Cinema 4D, TwinMotion, Tilda, Artivive",
                 description=(
-                    "Основатель Khudyakov Inc. Более 5 лет опыта в коммерческой разработке. "
-                    "Специализируется на построении архитектуры веб-приложений, "
-                    "интеграции ИИ-решений и автоматизации бизнес-процессов. "
-                    "Реализовал 50+ проектов различной сложности."
+                    "Студентка РГХПУ им. С.Г. Строганова (2021–2025), кафедра «Дизайн среды», "
+                    "профиль «Мультимедиа-дизайн». Специализируется на мультимедийном дизайне, "
+                    "3D-визуализации и дополненной реальности."
                 ),
-                photo_url="/images/team/alex.jpg",
+                photo_url="/images/team/polina.jpg",
                 order=1,
             ),
             TeamMember(
-                name="Мария Иванова",
-                position="UI/UX Designer",
-                stack="Figma, Adobe XD, Photoshop, Illustrator, After Effects",
+                name="Сурков Даниил Георгиевич",
+                position="Frontend Developer (Vue / React / TypeScript)",
+                stack="JavaScript, TypeScript, Python, Nuxt 3, React, Pinia, Tailwind, Ant Design, Vuetify, Webpack, REST API, Git, Vite, FastAPI, Django",
                 description=(
-                    "Дизайнер с портфолио более 30 успешных проектов. "
-                    "Создаёт удобные и визуально привлекательные интерфейсы. "
-                    "Опыт работы в продуктовых и аутсорс-командах. "
-                    "Специализируется на мобильном и веб-дизайне."
+                    "Frontend-разработчик с более чем 2-летним коммерческим опытом (общий стаж 5+ лет). "
+                    "Специализируется на архитектуре клиентской части, интеграции с REST API. "
+                    "Опыт работы в ООО «Центр энергетической сертификации» и Xoxlov Store."
                 ),
-                photo_url="/images/team/maria.jpg",
+                photo_url="",
                 order=2,
             ),
             TeamMember(
-                name="Дмитрий Петров",
-                position="Backend Developer",
-                stack="Python, Django, FastAPI, Go, Docker, Kubernetes",
+                name="Худяков Даниил Владиславович",
+                position="Python Developer",
+                stack="Python 3.11, Django 5, FastAPI, PostgreSQL 16, Redis 7, Docker, GitLab CI/CD, Celery 5.3, SAP, Technical SEO, JavaScript, React Native, Node.js, MongoDB, SQLite, MySQL, Selenium, Pytest, Pandas, REST/JSON/SOAP API",
                 description=(
-                    "Бэкенд-разработчик с 4+ годами опыта. "
-                    "Работал над высоконагруженными системами. "
-                    "Эксперт в настройке CI/CD, контейнеризации и DevOps-практиках. "
-                    "Имеет опыт работы с микросервисной архитектурой."
+                    "Python-разработчик с опытом построения микросервисной архитектуры. "
+                    "Работал в ООО РЕ-СПО, где перевел легаси PHP систему на Python (Django REST + FastAPI), "
+                    "увеличив скорость API на 42%. Выпускник МИРЭА (2024)."
                 ),
-                photo_url="/images/team/dmitry.jpg",
+                photo_url="",
                 order=3,
             ),
         ]
