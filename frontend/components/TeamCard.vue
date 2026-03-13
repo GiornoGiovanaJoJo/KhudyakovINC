@@ -1,14 +1,15 @@
 <template>
   <div class="team-card card" @click="$emit('select', member)" tabindex="0">
     <div class="team-card__avatar">
-      <div class="team-card__avatar-placeholder">
+      <img v-if="member.photo_url" :src="member.photo_url" :alt="member.name" class="team-card__img" />
+      <div v-else class="team-card__avatar-placeholder">
         {{ member.name.charAt(0) }}
       </div>
     </div>
     <h3 class="team-card__name">{{ member.name }}</h3>
     <p class="team-card__position">{{ member.position }}</p>
     <div class="team-card__stack">
-      <span v-for="tech in stackList" :key="tech" class="team-card__tag">
+      <span v-for=" tech in stackList" :key="tech" class="team-card__tag">
         {{ tech }}
       </span>
     </div>
@@ -55,6 +56,12 @@ const stackList = computed(() =>
 .team-card:hover .team-card__avatar {
   border-color: var(--c-accent);
   box-shadow: var(--shadow-glow);
+}
+
+.team-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .team-card__avatar-placeholder {

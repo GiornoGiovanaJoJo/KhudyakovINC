@@ -137,6 +137,27 @@
                   class="form-input form-textarea"
                   rows="4"
                 ></textarea>
+                <div v-else-if="field.key === 'photo_url' || field.key === 'image_url'" class="upload-field">
+                  <input
+                    v-model="formData[field.key]"
+                    type="text"
+                    class="form-input mb-2"
+                    placeholder="URL или загрузите файл"
+                  />
+                  <div class="upload-control">
+                    <input
+                      type="file"
+                      @change="handleFileUpload($event, field.key)"
+                      accept="image/*"
+                      class="hidden-input"
+                      :id="'file-' + field.key"
+                    />
+                    <label :for="'file-' + field.key" class="btn btn-outline btn-sm">
+                      📁 Загрузить файл
+                    </label>
+                    <span v-if="uploadingField === field.key" class="upload-status">Загрузка...</span>
+                  </div>
+                </div>
                 <input
                   v-else
                   v-model="formData[field.key]"
@@ -174,6 +195,7 @@ const isEditing = ref(false)
 const editingId = ref(null)
 const editingType = ref('')
 const formData = ref({})
+const uploadingField = ref(null)
 
 const teamList = ref([])
 const servicesList = ref([])
@@ -255,6 +277,30 @@ const startEdit = (type, item) => {
   editingId.value = item.id
   formData.value = { ...item }
   showModal.value = true
+}
+
+const handleFileUpload = async (event, fieldKey) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const formDataObj = new FormData()
+  formDataObj.append('file', file)
+
+  uploadingField.value = fieldKey
+  try {
+    const response = await $fetch('/api/upload/', {
+      method: 'POST',
+      body: formDataObj,
+      headers: {
+        Authorization: `Bearer ${token.value}`,
+      }
+    })
+    formData.value[fieldKey] = response.url
+  } catch (e) {
+    alert('Ошибка загрузки: ' + (e.data?.detail || e.message))
+  } finally {
+    uploadingField.value = null
+  }
 }
 
 const saveItem = async () => {
@@ -472,5 +518,30 @@ const logout = () => {
   .admin-tabs {
     flex-wrap: wrap;
   }
+}
+
+.upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upload-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.upload-status {
+  font-size: 0.8rem;
+  color: var(--c-accent-light);
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
 }
 </style>

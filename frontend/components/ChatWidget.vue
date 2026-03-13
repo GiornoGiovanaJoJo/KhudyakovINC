@@ -1,10 +1,11 @@
 <template>
   <div class="chat-widget">
     <!-- Toggle Button -->
-    <button class="chat-toggle" :class="{ active: isOpen }" @click="isOpen = !isOpen" id="chat-toggle">
+    <button class="chat-toggle" :class="{ active: isOpen }" @click="toggleChat" id="chat-toggle">
       <span class="chat-toggle__icon" v-if="!isOpen">💬</span>
-      <span class="chat-toggle__icon" v-else>✕</span>
+      <span class="chat-toggle__icon chat-toggle__icon--close" v-else>✕</span>
       <span class="chat-toggle__pulse" v-if="!isOpen && !hasInteracted"></span>
+      <span class="chat-toggle__dot" v-if="!isOpen && !hasInteracted"></span>
     </button>
 
     <!-- Chat Window -->
@@ -33,7 +34,7 @@
           <div class="chat-msg chat-msg--bot" v-if="messages.length === 0">
             <div class="chat-msg__bubble">
               Привет! 👋 Я IT-эксперт студии <strong>Khudyakov Inc.</strong>
-              Я помогу разобраться с технологиями и сориентирую по этапам. Опишите вашу задачу или идею!
+              Расскажите, что вы хотите создать? Мы делаем всё: от сайтов и мобильных приложений до дизайна логотипов и Telegram-ботов. Я помогу сориентироваться по технологиям и сориентирую по этапам!
             </div>
           </div>
 
@@ -102,6 +103,17 @@ const isSubmittingLead = ref(false)
 const hasSubmittedLead = ref(false)
 const leadForm = ref({ name: '', contact: '' })
 
+// Sound effect
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
+    audio.volume = 0.5
+    audio.play().catch(e => console.warn("Autoplay blocked:", e))
+  } catch (e) {
+    console.error("Failed to play sound", e)
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   // Restore chat state from localStorage
@@ -135,7 +147,23 @@ onMounted(() => {
       } catch (e) {}
     }
   }
+
+  // Attention seeking mechanism
+  if (!hasInteracted.value) {
+    setTimeout(() => {
+      if (!isOpen.value && !hasInteracted.value) {
+        playNotificationSound()
+      }
+    }, 3000)
+  }
 })
+
+const toggleChat = () => {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    hasInteracted.value = true
+  }
+}
 
 // Save to localStorage continuously
 watch([messages, hasSubmittedLead, leadForm], () => {
@@ -289,6 +317,12 @@ const sendMessage = async () => {
   font-size: 1.5rem;
 }
 
+.chat-toggle__icon--close {
+  color: var(--c-accent);
+  font-weight: bold;
+  font-size: 1.8rem;
+}
+
 .chat-toggle__pulse {
   position: absolute;
   inset: -4px;
@@ -296,6 +330,28 @@ const sendMessage = async () => {
   border: 2px solid var(--c-accent);
   animation: pulseGlow 2s ease-in-out infinite;
   pointer-events: none;
+}
+
+.chat-toggle__dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  background: #ff4d4f;
+  border: 2px solid var(--c-bg-secondary);
+  border-radius: 50%;
+  animation: bounceDot 1.5s ease-in-out infinite;
+}
+
+@keyframes bounceDot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); box-shadow: 0 0 10px #ff4d4f; }
+}
+
+@keyframes pulseGlow {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.3); opacity: 0; }
 }
 
 /* ── Chat Window ──────────────────────── */

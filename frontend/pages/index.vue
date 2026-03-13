@@ -87,10 +87,24 @@ useHead({
 const selectedMember = ref(null)
 const team = ref([])
 
-const { data } = await useFetch('/api/team/')
-if (data.value) {
-  team.value = data.value
-}
+// Use lazy fetch to avoid blocking navigation and ensure client-side rendering
+const { data, refresh } = await useFetch('/api/team/', {
+  lazy: true,
+  server: false // Ensure it runs on client for consistent behavior if server-side state is stale
+})
+
+watch(data, (newData) => {
+  if (newData) {
+    team.value = newData
+  }
+}, { immediate: true })
+
+// Force refresh on mount just in case
+onMounted(() => {
+  if (!team.value.length) {
+    refresh()
+  }
+})
 
 const openChat = () => {
   const toggle = document.getElementById('chat-toggle')
