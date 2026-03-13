@@ -146,9 +146,9 @@ async def handle_status_change(callback: types.CallbackQuery):
     backend_url = f"http://backend:8000/api/leads/{lead_id}"
     try:
         async with httpx.AsyncClient() as client:
-            # Note: We need admin auth ideally, but for internal docker calls we might skip or use a secret header
-            # For now, let's assume the backend allows it or we add a simple internal bypass/token
-            response = await client.patch(backend_url, json={"status": new_status})
+            # Match INTERNAL_SECRET from backend/app/routers/leads.py
+            headers = {"X-Internal-Secret": "super-secret-service-key"}
+            response = await client.patch(backend_url, json={"status": new_status}, headers=headers)
             if response.status_code == 200:
                 await callback.answer(f"Статус изменен на: {status_map.get(new_status)}")
                 

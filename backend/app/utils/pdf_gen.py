@@ -11,13 +11,20 @@ from io import BytesIO
 # In a real environment, we'd bundle a font file. 
 # For now, we'll try to find a common system font or just use standard ones (which might fail for Cyrillic)
 # Let's assume we can use a DejaVu or similar if available, or just stick to basics and warn.
-# Since we are on Windows, we might find Arial or similar.
-font_path = "C:\\Windows\\Fonts\\arial.ttf"
-if os.path.exists(font_path):
-    pdfmetrics.registerFont(TTFont('Arial', font_path))
-    FONT_NAME = 'Arial'
-else:
-    FONT_NAME = 'Helvetica'
+from datetime import datetime
+
+# Try to find a Unicode font for Cyrillic support in Linux Docker environment
+# fonts-dejavu-core provides DejaVuSans.ttf
+font_paths = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "C:\\Windows\\Fonts\\arial.ttf"
+]
+FONT_NAME = 'Helvetica'
+for path in font_paths:
+    if os.path.exists(path):
+        pdfmetrics.registerFont(TTFont('DejaVu', path))
+        FONT_NAME = 'DejaVu'
+        break
 
 
 def generate_proposal_pdf(lead_name: str, ai_summary: str) -> BytesIO:
@@ -63,7 +70,8 @@ def generate_proposal_pdf(lead_name: str, ai_summary: str) -> BytesIO:
     
     # Client Info
     elements.append(Paragraph(f"Для клиента: <b>{lead_name}</b>", body_style))
-    elements.append(Paragraph(f"Дата: {os.popen('date /t').read().strip()}", body_style))
+    date_str = datetime.now().strftime("%d.%m.%Y")
+    elements.append(Paragraph(f"Дата: {date_str}", body_style))
     elements.append(Spacer(1, 24))
 
     # Project Understanding
