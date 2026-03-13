@@ -370,15 +370,17 @@ const sendMessage = async () => {
 /* ── Chat Window ──────────────────────── */
 .chat-window {
   position: absolute;
-  bottom: 76px;
+  bottom: 80px;
   right: 0;
-  width: 380px;
-  height: 520px;
+  /* Fluid sizing: scales with viewport but stays within reasonable bounds */
+  width: clamp(340px, 28vw, 520px);
+  height: clamp(450px, 65vh, 800px);
   border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: var(--shadow-modal);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .chat-header {
@@ -450,11 +452,12 @@ const sendMessage = async () => {
 }
 
 .chat-msg__bubble {
-  max-width: 80%;
-  padding: 0.7rem 1rem;
+  max-width: 85%;
+  padding: 0.8rem 1.1rem;
   border-radius: var(--radius-md);
-  font-size: 0.88rem;
-  line-height: 1.5;
+  /* Fluid typography */
+  font-size: clamp(0.88rem, 0.9vw, 1.05rem);
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
@@ -620,11 +623,28 @@ const sendMessage = async () => {
     bottom: var(--space-md);
     right: var(--space-md);
   }
+  
+  .chat-toggle {
+    width: 54px;
+    height: 54px;
+  }
 
   .chat-window {
     width: calc(100vw - 2rem);
-    right: -0.5rem;
-    height: 70vh;
+    height: calc(100vh - 120px);
+    bottom: 70px;
+    right: 0;
+  }
+}
+
+/* Enhancements for very large screens */
+@media (min-width: 1600px) {
+  .chat-header__title {
+    font-size: 1.1rem;
+  }
+  .chat-input__field {
+    font-size: 1rem;
+    padding: 0.8rem 1.2rem;
   }
 }
 </style>
