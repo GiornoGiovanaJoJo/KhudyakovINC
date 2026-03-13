@@ -43,7 +43,7 @@ async def seed():
             TeamMember(
                 name="Худяков Даниил Владиславович",
                 position="Python Developer",
-                stack="Python 3.11, Django 5, FastAPI, PostgreSQL 16, Redis 7, Docker, GitLab CI/CD, Celery 5.3, SAP, Technical SEO, JavaScript, React Native, Node.js, MongoDB, SQLite, MySQL, Selenium, Pytest, Pandas, REST/JSON/SOAP API",
+                stack="Python 3.11, Django 5, FastAPI, PostgreSQL 16, Redis 7, Docker, GitLab CI/CD, Celery 5.3, SAP, Technical SEO, JavaScript, Node.js, MongoDB, SQLite, MySQL, Selenium, Pytest, Pandas, REST/JSON/SOAP API",
                 description=(
                     "Python-разработчик с опытом построения микросервисной архитектуры. "
                     "Работал в ООО РЕ-СПО, где перевел легаси PHP систему на Python (Django REST + FastAPI), "
