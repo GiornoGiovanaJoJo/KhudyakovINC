@@ -86,5 +86,13 @@ async def create_lead(lead: LeadCreate):
             return {"status": "success", "message": "Lead safely forwarded to Telegram bot."}
     except httpx.RequestError as e:
         print(f"[ERROR] Failed to contact Telegram bot microservice: {str(e)}")
-        # Lead is saved in DB in the future maybe, but right now it fails.
-        raise HTTPException(status_code=500, detail="Ошибка связи с сервисом уведомлений.")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Ошибка связи с сервисом уведомлений: {str(e)}"
+        )
+    except Exception as e:
+        print(f"[CRITICAL ERROR] Unexpected failure in create_lead: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Произошла непредвиденная ошибка на сервере: {str(e)}"
+        )
