@@ -37,6 +37,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./telegram_bot/.env
+    volumes:
+      - ./telegram_bot/chats.json:/app/chats.json
     depends_on:
       - backend
 
