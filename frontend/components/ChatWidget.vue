@@ -128,6 +128,7 @@ const inputText = ref('')
 const messages = ref([])
 const isLoading = ref(false)
 const messagesContainer = ref(null)
+const hasInteracted = ref(false)
 const hasUserClicked = ref(false) // Track interaction for audio
 
 // Lead Form State
