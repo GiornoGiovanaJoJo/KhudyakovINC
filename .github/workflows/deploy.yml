@@ -79,10 +79,9 @@ jobs:
 
             # Perform automated smoke test
             echo "Running automated smoke test..."
-            # Note: We use the server's public IP or localhost if checked on-box
             if ! python3 scripts/smoke_test.py; then
-                echo "ERROR: Smoke test failed! Rolling back..."
-                sudo docker-compose rollback || (sudo docker-compose down && sudo docker-compose up -d)
+                echo "ERROR: Smoke test failed! Printing logs for debugging..."
+                sudo docker-compose logs --tail=100
                 exit 1
             fi
             echo "Smoke test passed! Deployment successful."
