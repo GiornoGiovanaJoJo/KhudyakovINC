@@ -66,20 +66,37 @@
             
             <div v-if="project.external_url" class="external-links">
               <hr class="card-hr">
-              <a :href="project.external_url" target="_blank" class="btn btn-outline w-full">
+              <button @click="isBrowserOpen = true" class="btn btn-outline w-full">
                 Посмотреть живой сайт ↗
-              </a>
+              </button>
             </div>
           </div>
         </aside>
       </div>
     </div>
+
+    <!-- Internal Browser Modal -->
+    <Transition name="fade">
+      <div v-if="isBrowserOpen" class="browser-modal">
+        <div class="browser-modal__header glass">
+          <div class="browser-modal__address">
+            <span class="lock-icon">🔒</span>
+            <span class="url-text">{{ project.external_url }}</span>
+          </div>
+          <button @click="isBrowserOpen = false" class="browser-modal__close">✕</button>
+        </div>
+        <div class="browser-modal__content">
+          <iframe :src="project.external_url" frameborder="0" class="browser-iframe"></iframe>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 const route = useRoute()
 const slug = route.params.slug
+const isBrowserOpen = ref(false)
 
 const { data: project } = await useFetch(`/api/portfolio/${slug}`)
 
@@ -257,6 +274,67 @@ const openChat = () => {
 }
 
 .w-full { width: 100%; }
+
+
+/* ── Browser Modal ────────────────────── */
+.browser-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--c-bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.browser-modal__header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-xl);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.browser-modal__address {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--c-text-muted);
+  border: 1px solid var(--c-border);
+  max-width: 60%;
+}
+
+.url-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-modal__close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--c-text-primary);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.browser-modal__content {
+  flex: 1;
+  background: #fff;
+}
+
+.browser-iframe {
+  width: 100%;
+  height: 100%;
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 @media (max-width: 900px) {
   .project-grid {

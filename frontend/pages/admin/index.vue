@@ -202,6 +202,10 @@
                     </label>
                     <span v-if="uploadingField === field.key" class="upload-status">Загрузка...</span>
                   </div>
+                  <div v-if="formData[field.key]" class="admin-preview mt-2">
+                    <img :src="formData[field.key]" class="admin-preview__img" />
+                    <button type="button" class="btn-clear" @click="formData[field.key] = ''">Удалить</button>
+                  </div>
                 </div>
                 <input
                   v-else
@@ -717,5 +721,31 @@ const logout = () => {
   padding: var(--space-md);
   border-radius: var(--radius-sm);
   font-family: monospace;
+}
+
+/* ── Admin Preview ───────────────────── */
+.admin-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(0,0,0,0.2);
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.admin-preview__img {
+  height: 60px;
+  width: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--c-border);
+}
+
+.btn-clear {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 </style>

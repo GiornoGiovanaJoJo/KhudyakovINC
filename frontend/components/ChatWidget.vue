@@ -183,7 +183,7 @@ const playNotificationSound = () => {
     // Using a more reliable notification sound URL (direct link to a standard UI sound)
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
     audio.volume = 0.3
-    audio.play().catch(e => console.warn("Autoplay still blocked:", e))
+    // audio.play().catch(e => console.warn("Autoplay still blocked:", e)) // Disabled per request
   } catch (e) {
     console.error("Failed to play sound", e)
   }

@@ -43,10 +43,17 @@ export default defineNuxtConfig({
         target: 'http://localhost:8000/api',
         changeOrigin: true,
       },
+      '/static': {
+        target: 'http://localhost:8000/static',
+        changeOrigin: true,
+      },
     },
     routeRules: {
       '/api/**': {
         proxy: (process.env.NUXT_API_BASE || 'http://localhost:8000') + '/api/**',
+      },
+      '/static/**': {
+        proxy: (process.env.NUXT_API_BASE || 'http://localhost:8000') + '/static/**',
       },
     },
   },
