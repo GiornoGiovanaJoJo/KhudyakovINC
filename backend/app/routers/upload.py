@@ -1,7 +1,7 @@
 import os
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from ...auth import get_current_admin
+from ..auth import get_current_admin
 
 router = APIRouter()
 
