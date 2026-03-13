@@ -13,6 +13,13 @@ class LeadStatus(str, Enum):
 
 
 class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    position = Column(String(100), nullable=False)
+    stack = Column(String(500), nullable=True)
+    description = Column(Text, nullable=True)
     photo_url = Column(String(500), nullable=True, default="")
     order = Column(Integer, default=0)
 
