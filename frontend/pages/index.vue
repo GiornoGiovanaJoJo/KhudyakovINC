@@ -294,12 +294,12 @@ const startChatWithQuiz = () => {
 
 // Content Data
 const techStack = [
-  { name: "Vue / Nuxt", icon: "/images/icons/web_dev.png" },
-  { name: "Node.js", icon: "/images/icons/complex.png" },
-  { name: "Python / FastAPI", icon: "/images/icons/web_dev.png" },
-  { name: "PostgreSQL", icon: "/images/icons/complex.png" },
-  { name: "Docker", icon: "/images/icons/web_dev.png" },
-  { name: "Figma", icon: "/images/icons/design.png" }
+  { name: "Vue / Nuxt", icon: "/images/icons/vue.png" },
+  { name: "Node.js", icon: "/images/icons/node.png" },
+  { name: "Python / FastAPI", icon: "/images/icons/python.png" },
+  { name: "PostgreSQL", icon: "/images/icons/postgres.png" },
+  { name: "Docker", icon: "/images/icons/docker.png" },
+  { name: "Figma", icon: "/images/icons/figma.png" }
 ]
 
 const testimonials = [
