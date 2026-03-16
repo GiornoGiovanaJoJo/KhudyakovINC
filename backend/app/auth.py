@@ -14,8 +14,8 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "changeme123")
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-fallback-key")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
-
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
 
 
 def _hash_password(password: str) -> str:
@@ -66,7 +66,22 @@ async def get_current_user(
         if user_id_str is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
-        # We return the payload info so routers can use user_id
         return {"id": user_id_str, "sub": user_id_str}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials = Depends(security_optional),
+) -> dict | None:
+    if not credentials:
+        return None
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
+            return None
+        return {"id": user_id_str, "sub": user_id_str}
+    except JWTError:
+        return None

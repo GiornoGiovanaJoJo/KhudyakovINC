@@ -7,7 +7,7 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import Lead, LeadStatus
 from ..schemas import LeadCreate, LeadResponse, LeadUpdate
-from ..auth import get_current_admin, get_current_user
+from ..auth import get_current_admin, get_current_user_optional
 from typing import List, Optional
 from fastapi import Request
 from ..utils.pdf_gen import generate_proposal_pdf
@@ -76,7 +76,7 @@ async def generate_lead_summary(chat_history: str) -> str:
 async def create_lead(
     lead: LeadCreate, 
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[dict] = Depends(get_current_user)
+    current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
     # Determine user_id if logged in
     user_id = None
