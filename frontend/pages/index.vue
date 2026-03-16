@@ -115,22 +115,30 @@
         </p>
         <div class="process-grid">
           <div class="process-step">
-            <div class="process-step__number">01</div>
+            <div class="process-step__icon">
+              <img src="/images/steps/analytics.png" alt="Analytics">
+            </div>
             <h3 class="process-step__title">Аналитика</h3>
             <p class="process-step__desc">Погружаемся в ваш бизнес, определяем цели и требования.</p>
           </div>
           <div class="process-step">
-            <div class="process-step__number">02</div>
+            <div class="process-step__icon">
+              <img src="/images/steps/design.png" alt="Design">
+            </div>
             <h3 class="process-step__title">Дизайн</h3>
             <p class="process-step__desc">Создаем удобные и современные интерфейсы (UI/UX).</p>
           </div>
           <div class="process-step">
-            <div class="process-step__number">03</div>
+            <div class="process-step__icon">
+              <img src="/images/steps/dev.png" alt="Development">
+            </div>
             <h3 class="process-step__title">Разработка</h3>
             <p class="process-step__desc">Пишем чистый код, используя передовой стек технологий.</p>
           </div>
           <div class="process-step">
-            <div class="process-step__number">04</div>
+            <div class="process-step__icon">
+              <img src="/images/steps/launch.png" alt="Launch">
+            </div>
             <h3 class="process-step__title">Запуск</h3>
             <p class="process-step__desc">Тестируем и выводим проект на рынок, обеспечивая поддержку.</p>
           </div>
@@ -188,7 +196,9 @@
         <h2 class="section__title">Наш технологический стек</h2>
         <div class="tech-grid">
           <div v-for="tech in techStack" :key="tech.name" class="tech-item glass">
-            <span class="tech-icon">{{ tech.icon }}</span>
+            <span class="tech-icon">
+              <img :src="tech.icon" :alt="tech.name" class="tech-icon__img">
+            </span>
             <span class="tech-name">{{ tech.name }}</span>
           </div>
         </div>
@@ -284,12 +294,12 @@ const startChatWithQuiz = () => {
 
 // Content Data
 const techStack = [
-  { name: "Vue / Nuxt", icon: "🟢" },
-  { name: "Node.js", icon: "📦" },
-  { name: "Python / FastAPI", icon: "🐍" },
-  { name: "PostgreSQL", icon: "🐘" },
-  { name: "Docker", icon: "🐳" },
-  { name: "Figma", icon: "🎨" }
+  { name: "Vue / Nuxt", icon: "/images/icons/web_dev.png" },
+  { name: "Node.js", icon: "/images/icons/complex.png" },
+  { name: "Python / FastAPI", icon: "/images/icons/web_dev.png" },
+  { name: "PostgreSQL", icon: "/images/icons/complex.png" },
+  { name: "Docker", icon: "/images/icons/web_dev.png" },
+  { name: "Figma", icon: "/images/icons/design.png" }
 ]
 
 const testimonials = [
@@ -540,10 +550,44 @@ const openChat = () => {
   transform: translateY(-5px);
 }
 
+.process-step__icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto var(--space-md);
+  padding: var(--space-sm);
+  background: var(--c-bg-glass);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-normal);
+}
+
+.process-step:hover .process-step__icon {
+  transform: translateY(-5px) scale(1.05);
+  border-color: var(--c-accent);
+}
+
+.process-step__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .tech-icon {
-  display: block;
-  font-size: 2rem;
-  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--space-sm);
+}
+
+.tech-icon__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .tech-name {
