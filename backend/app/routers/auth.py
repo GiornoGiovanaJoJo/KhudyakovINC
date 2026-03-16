@@ -36,7 +36,7 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
     # 1. Check if it's an admin login
     if verify_admin(login_data.username, login_data.password):
         access_token = create_access_token(data={"sub": login_data.username, "type": "admin"})
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer", "user_type": "admin"}
 
     # 2. Otherwise check for regular user
     result = await db.execute(select(User).where(User.phone == login_data.username))
@@ -46,4 +46,4 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
     
     access_token = create_access_token(data={"sub": str(user.id), "type": "user"})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "user_type": "user"}

@@ -18,7 +18,6 @@
             <NuxtLink to="/" class="header__link" @click="menuOpen = false">Главная</NuxtLink>
             <NuxtLink to="/services" class="header__link" @click="menuOpen = false">Услуги</NuxtLink>
             <NuxtLink to="/portfolio" class="header__link" @click="menuOpen = false">Портфолио</NuxtLink>
-            <NuxtLink to="/admin" class="header__link header__link--admin" @click="menuOpen = false">Админка</NuxtLink>
             <div class="header__auth">
               <template v-if="isLoggedIn && user">
                 <span class="header__user-name">{{ user.full_name || 'Профиль' }}</span>
@@ -58,7 +57,6 @@
               <li><NuxtLink to="/" class="footer__link">Главная</NuxtLink></li>
               <li><NuxtLink to="/services" class="footer__link">Услуги</NuxtLink></li>
               <li><NuxtLink to="/portfolio" class="footer__link">Портфолио</NuxtLink></li>
-              <li><NuxtLink to="/admin" class="footer__link">Админка</NuxtLink></li>
             </ul>
           </div>
 

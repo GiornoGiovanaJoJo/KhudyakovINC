@@ -57,6 +57,11 @@ const doLogin = async () => {
       body: { username: username.value, password: password.value },
     })
 
+    if (res.user_type !== 'admin') {
+      error.value = 'У вас нет прав администратора'
+      return
+    }
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('admin_token', res.access_token)
     }
