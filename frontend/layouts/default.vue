@@ -4,7 +4,7 @@
     <header class="header glass">
       <div class="container header__inner">
         <NuxtLink to="/" class="header__logo">
-          <span class="header__logo-icon">⚡</span>
+          <img src="/images/logo.png" alt="Logo" class="header__logo-img">
           <span class="header__logo-text">Khudyakov<span class="text-gradient">Inc.</span></span>
         </NuxtLink>
 
@@ -42,7 +42,7 @@
           <!-- Brand -->
           <div class="footer__brand">
             <NuxtLink to="/" class="header__logo mb-sm">
-              <span class="header__logo-icon">⚡</span>
+              <img src="/images/logo.png" alt="Logo" class="header__logo-img">
               <span class="header__logo-text">Khudyakov<span class="text-gradient">Inc.</span></span>
             </NuxtLink>
             <p class="footer__desc" style="text-align: left; max-width: 300px;">
@@ -170,8 +170,10 @@ const handleLogout = () => {
   color: var(--c-text-primary);
 }
 
-.header__logo-icon {
-  font-size: 1.5rem;
+.header__logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .header__logo-text {
