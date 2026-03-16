@@ -101,16 +101,19 @@ async def send_lead(lead: LeadData):
     text += f"📞 <b>Контакт:</b> {safe_contact}\n\n"
     
     if lead.ai_summary:
-        safe_summary = html.escape(lead.ai_summary[:1000])
+        safe_summary = html.escape(lead.ai_summary[:800])
         text += f"🤖 <b>AI РЕЗЮМЕ ПРОЕКТА:</b>\n"
-        text += f"<i>{safe_summary}</i>\n\n"
+        text += f"<i>{safe_summary}...</i>\n\n"
 
     text += f"💬 <b>Полная история чата:</b>\n"
     
-    # Режем историю и экранируем HTML
-    history_text = lead.chat_history[:3000] if lead.chat_history else "Нет истории"
+    # Режем историю и экранируем HTML, чтобы точно влезть в лимит 4096 символов Telegram
+    history_text = lead.chat_history[:2000] if lead.chat_history else "Нет истории"
     safe_history = html.escape(history_text)
+    if len(lead.chat_history) > 2000:
+        safe_history += "...\n[История обрезана]"
     text += f"<pre>{safe_history}</pre>"
+
     
     # Кнопки управления статусом
     builder = InlineKeyboardBuilder()
