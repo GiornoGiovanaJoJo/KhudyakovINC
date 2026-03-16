@@ -75,13 +75,13 @@
           <div class="footer__col">
             <h4 class="footer__col-title">Контакты</h4>
             <div class="footer__contact-item">
-              <span>📍</span> г. Москва, ул. Примерная, 10
+              <span>📍</span> г. Москва
             </div>
             <div class="footer__contact-item">
-              <span>📧</span> hello@khudyakov.inc
+              <span>📧</span> kbootovsk@gmail.com
             </div>
             <div class="footer__contact-item">
-              <span>📞</span> +7 (999) 000-00-00
+              <span>📞</span> +7 (993) 338-31-45
             </div>
           </div>
         </div>
