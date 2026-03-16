@@ -19,17 +19,6 @@
               <div class="chat-header__status">Онлайн — готов помочь</div>
             </div>
           </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="chat-header__icon-btn" @click="toggleTrackingMode" title="Отследить заявку">
-              🔍
-            </button>
-            <button class="chat-header__icon-btn" @click="clearChat" title="Начать новый диалог">
-              🔄
-            </button>
-            <button class="chat-header__lead-btn" @click="toggleLeadMode" :title="hasSubmittedLead ? 'Дополнить заявку' : 'Оставить контакты'">
-              {{ hasSubmittedLead ? '📝 Дополнить' : '☎️ Заявка' }}
-            </button>
-          </div>
         </div>
 
         <div class="chat-messages" ref="messagesContainer">
@@ -177,18 +166,6 @@ const formatStatus = (s) => {
 
 const formatDate = (d) => new Date(d).toLocaleDateString('ru-RU')
 
-// Sound effect
-const playNotificationSound = () => {
-  try {
-    // Using a more reliable notification sound URL (direct link to a standard UI sound)
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3')
-    audio.volume = 0.3
-    // audio.play().catch(e => console.warn("Autoplay still blocked:", e)) // Disabled per request
-  } catch (e) {
-    console.error("Failed to play sound", e)
-  }
-}
-
 // Lifecycle
 onMounted(() => {
   // Restore chat state
@@ -209,9 +186,7 @@ onMounted(() => {
   // Attention seeking mechanism
   if (!hasInteracted.value) {
     setTimeout(() => {
-      if (!isOpen.value && !hasInteracted.value) {
-        playNotificationSound()
-      }
+      // Intentionally left blank as sound is removed
     }, 3000)
   }
 
@@ -233,15 +208,6 @@ onMounted(() => {
     }
     window.addEventListener('scroll', onScroll)
   }
-
-  // Audio unlocker
-  const unlockAudio = () => {
-    hasUserClicked.value = true
-    window.removeEventListener('click', unlockAudio)
-    window.removeEventListener('keydown', unlockAudio)
-  }
-  window.addEventListener('click', unlockAudio)
-  window.addEventListener('keydown', unlockAudio)
 
   // Quiz context check
   const checkQuiz = () => {
@@ -269,7 +235,6 @@ onMounted(() => {
 const showProactiveGreeting = (text) => {
   proactiveGreeting.value = text
   hasInteracted.value = false // Keep showing pulse
-  playNotificationSound()
 }
 
 const toggleChat = () => {
@@ -338,14 +303,45 @@ const submitLead = async () => {
 }
 
 const sendMessage = async (e, quizContext = null) => {
-  const text = quizContext ? `Обсудим проект: ${quizContext.type}` : inputText.value.trim()
+  let text = inputText.value.trim()
+  
+  if (quizContext) {
+    text = `Привет! Я прошел квиз на вашем сайте. Мой проект: ${quizContext.type}. По дизайну: ${quizContext.design}. Ожидаемые сроки: ${quizContext.timeline}. Что скажете, какие будут этапы и примерная стоимость?`
+  }
+
   if (!text || isLoading.value) return
 
   hasInteracted.value = true
-  messages.value.push({ role: 'user', text })
+  messages.value.push({ role: 'user', text: quizContext ? `Обсудим проект: ${quizContext.type}` : text })
   inputText.value = ''
   isLoading.value = true
   scrollToBottom()
+
+  // Handle local text commands without hitting backend
+  const lowerText = text.toLowerCase()
+  const cleanText = lowerText.replace(/\s+/g, '')
+
+  if (cleanText.includes('оставитьзаявку') || cleanText === 'заявка') {
+    isLeadMode.value = true
+    messages.value.push({ role: 'assistant', text: 'Понял! Заполните форму ниже, чтобы оставить заявку.' })
+    isLoading.value = false
+    scrollToBottom()
+    return
+  }
+
+  if (cleanText.includes('отследитьзаявку')) {
+    isTrackingMode.value = true
+    messages.value.push({ role: 'assistant', text: 'Конечно! Выберите режим отслеживания и введите данные.' })
+    isLoading.value = false
+    scrollToBottom()
+    return
+  }
+
+  if (cleanText.includes('новыйчат') || cleanText.includes('очиститьчат')) {
+    clearChat()
+    isLoading.value = false
+    return
+  }
 
   try {
     const history = messages.value.slice(0, -1).map((m) => ({

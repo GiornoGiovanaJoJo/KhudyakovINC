@@ -3,7 +3,7 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="hero__bg">
-        <img src="/images/abstract_hero.png" alt="Abstract Background" class="hero__bg-img" />
+        <InteractiveHero />
       </div>
       <div class="container hero__content">
         <div class="hero__badge">🚀 Команда профессионалов</div>
