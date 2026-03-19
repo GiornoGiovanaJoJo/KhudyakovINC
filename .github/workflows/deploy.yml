@@ -39,6 +39,8 @@ jobs:
             sudo systemctl disable nginx || true
             
             # Start Docker
+            sudo update-alternatives --set iptables /usr/sbin/iptables-nft || true
+            sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-nft || true
             sudo systemctl enable docker
             sudo systemctl restart containerd || true
             sudo systemctl start docker || sudo systemctl restart docker || (sudo journalctl -xeu docker.service --no-pager; exit 1)
