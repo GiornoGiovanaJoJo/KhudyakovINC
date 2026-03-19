@@ -31,6 +31,7 @@ jobs:
             # Remove broken third-party apt source lists that block package installation
             sudo rm -f /etc/apt/sources.list.d/nodejs.list /etc/apt/sources.list.d/docker.list || true
             sudo apt-get update
+            sudo apt-get remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || true
             sudo apt-get install -y git docker.io docker-compose-v2 || sudo apt-get install -y git docker-compose-plugin
             
             # Stop default nginx to free port 80
@@ -39,7 +40,8 @@ jobs:
             
             # Start Docker
             sudo systemctl enable docker
-            sudo systemctl start docker || sudo systemctl restart docker
+            sudo systemctl restart containerd || true
+            sudo systemctl start docker || sudo systemctl restart docker || (sudo journalctl -xeu docker.service --no-pager; exit 1)
 
             # Setup Project
             cd /opt
