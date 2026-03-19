@@ -2,7 +2,7 @@ import os
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from ..schemas import AIRequest, AIResponse
-from .auth import get_current_user
+from ..auth import get_current_admin
 
 router = APIRouter()
 
@@ -103,14 +103,14 @@ async def _call_yandex_gpt(system_prompt: str, user_text: str) -> str:
 
 
 @router.post("/evaluate", response_model=AIResponse)
-async def evaluate_order(request: AIRequest, current_user=Depends(get_current_user)):
+async def evaluate_order(request: AIRequest, current_user=Depends(get_current_admin)):
     """Оценка стоимости проекта на базе сырого текста клиента"""
     text = await _call_yandex_gpt(SYSTEM_PROMPT_EVALUATE, request.text)
     return AIResponse(text=text)
 
 
 @router.post("/ask", response_model=AIResponse)
-async def ask_question(request: AIRequest, current_user=Depends(get_current_user)):
+async def ask_question(request: AIRequest, current_user=Depends(get_current_admin)):
     """Вопросы внутреннему ИИ (процессы, технологии, сметы)"""
     text = await _call_yandex_gpt(SYSTEM_PROMPT_ASK, request.text)
     return AIResponse(text=text)
