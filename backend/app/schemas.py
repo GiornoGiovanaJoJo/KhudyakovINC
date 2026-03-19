@@ -185,3 +185,12 @@ class LeadResponse(LeadBase):
 
     class Config:
         from_attributes = True
+
+
+# ── AI Manager ────────────────────────────────────────
+
+class AIRequest(BaseModel):
+    text: str
+
+class AIResponse(BaseModel):
+    text: str

@@ -19,6 +19,48 @@
         </button>
       </div>
 
+      <!-- AI Manager Tab -->
+      <div v-if="activeTab === 'aimanager'" class="admin-section">
+        <div class="admin-section__header">
+          <h2>Менеджер ИИ</h2>
+          <button class="btn btn-outline btn-sm" @click="showAiInstrModal = true">ℹ️ Инструкция</button>
+        </div>
+
+        <div class="ai-manager-container">
+          <!-- Оценка заказа -->
+          <div class="ai-card">
+            <h3>📊 Оценка заказа</h3>
+            <div class="form-group mt-sm">
+              <label class="form-label">Описание заказа от клиента:</label>
+              <textarea v-model="aiOrderText" class="form-input form-textarea" rows="4" placeholder="Введите сырой текст от клиента..."></textarea>
+            </div>
+            <button class="btn btn-primary" @click="evaluateOrder" :disabled="isEvaluating">
+              {{ isEvaluating ? 'Генерация...' : 'Оценить стоимость (AI)' }}
+            </button>
+            <div v-if="aiOrderResult" class="ai-result mt-md">
+              <label class="form-label">Оценка и аргументация AI:</label>
+              <div class="ai-response-box">{{ aiOrderResult }}</div>
+            </div>
+          </div>
+
+          <!-- Вопросы ИИ -->
+          <div class="ai-card mt-lg">
+            <h3>💬 Вопросы ИИ</h3>
+            <div class="form-group mt-sm">
+              <label class="form-label">Ваш вопрос (по процессам, сметам, технологиям):</label>
+              <textarea v-model="aiQuestionText" class="form-input form-textarea" rows="3" placeholder="Задайте вопрос..."></textarea>
+            </div>
+            <button class="btn btn-primary" @click="askAiQuestion" :disabled="isAsking">
+              {{ isAsking ? 'Думаю...' : 'Спросить (AI)' }}
+            </button>
+            <div v-if="aiQuestionResult" class="ai-result mt-md">
+              <label class="form-label">Ответ AI:</label>
+              <div class="ai-response-box">{{ aiQuestionResult }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Leads Tab -->
       <div v-if="activeTab === 'leads'" class="admin-section">
         <div class="admin-section__header">
@@ -226,6 +268,29 @@
         </div>
       </Teleport>
 
+      <!-- AI Instr Modal -->
+      <Teleport to="body">
+        <div v-if="showAiInstrModal" class="modal-overlay" @click.self="showAiInstrModal = false">
+          <div class="modal-content" style="max-width: 700px">
+            <button class="admin-modal-close" @click="showAiInstrModal = false">&times;</button>
+            <h2 class="mb-lg">Инструкция</h2>
+            <div class="ai-instr-text">
+              <p>Добро пожаловать в Менеджер Оценки Проектов!</p>
+              <p>Это приложение помогает быстро и профессионально оценивать лиды и распределять бюджеты, используя искусственный интеллект YandexGPT.</p>
+              <p><strong>ВКЛАДКА 1: 📊 ОЦЕНКА ЗАКАЗА</strong><br>
+              Сюда нужно вставлять сырые запросы от клиентов (дословные сообщения или ТЗ).<br>
+              - Что делает: Анализирует запрос, определяет тип проекта, подсказывает вилку стоимости (от и до) и выдает аргументы для клиента.<br>
+              - Особенности: ИИ учитывает бюджет клиента. Если клиент пришел с 3000 руб., ИИ не скажет "проси 150 000 руб.". Он подскажет, как аргументировать минимальный базовый чек (например, 10к). Также учитывается разница между CMS (дороже) и Самописом (дешевле).</p>
+              <p><strong>ВКЛАДКА 2: 💬 ВОПРОСЫ ИИ (Внутренний чат)</strong><br>
+              Это ваш умный помощник-наставник.<br>
+              - Что делает: Отвечает на любые вопросы по процессам, технологиям, экономике проекта и даже о том, как пользоваться этой программой.<br>
+              - Экономика: В ИИ вшита наша экономика (Дизайнер получает 25%, Frontend - 32%, Backend - 43% от сайтов под ключ).<br>
+              - Пример вопросов: "Продали сайт за 120к, сколько получит дизайнер?", "Чем FastAPI лучше PHP для клиента?".</p>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Lead Detail Modal -->
       <Teleport to="body">
         <div v-if="showLeadModal" class="modal-overlay" @click.self="showLeadModal = false">
@@ -266,6 +331,7 @@
 useHead({ title: 'Админ-панель — Khudyakov Inc.' })
 
 const tabs = [
+  { key: 'aimanager', label: 'Менеджер ИИ', icon: '🤖' },
   { key: 'team', label: 'Команда', icon: '👥' },
   { key: 'services', label: 'Услуги', icon: '🛠️' },
   { key: 'portfolio', label: 'Портфолио', icon: '💼' },
@@ -286,6 +352,15 @@ const portfolioList = ref([])
 const leadsList = ref([])
 const selectedLead = ref(null)
 const showLeadModal = ref(false)
+
+// AI Manager refs
+const aiOrderText = ref('')
+const aiOrderResult = ref('')
+const isEvaluating = ref(false)
+const aiQuestionText = ref('')
+const aiQuestionResult = ref('')
+const isAsking = ref(false)
+const showAiInstrModal = ref(false)
 
 // Auth check
 const token = ref('')
@@ -469,6 +544,41 @@ const deleteItem = async (type, id) => {
     await loadAll()
   } catch (e) {
     alert('Ошибка удаления: ' + (e.data?.detail || e.message))
+  }
+}
+
+// AI Methods
+const evaluateOrder = async () => {
+  if (!aiOrderText.value.trim()) return
+  isEvaluating.value = true
+  try {
+    const res = await $fetch('/api/ai/evaluate', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { text: aiOrderText.value }
+    })
+    aiOrderResult.value = res.text
+  } catch (e) {
+    alert('Ошибка при оценке заказа: ' + (e.data?.detail || e.message))
+  } finally {
+    isEvaluating.value = false
+  }
+}
+
+const askAiQuestion = async () => {
+  if (!aiQuestionText.value.trim()) return
+  isAsking.value = true
+  try {
+    const res = await $fetch('/api/ai/ask', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { text: aiQuestionText.value }
+    })
+    aiQuestionResult.value = res.text
+  } catch (e) {
+    alert('Ошибка при запросе: ' + (e.data?.detail || e.message))
+  } finally {
+    isAsking.value = false
   }
 }
 
@@ -749,5 +859,33 @@ const logout = () => {
   color: #ef4444;
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+/* ── AI Manager ──────────────────────── */
+.ai-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+.ai-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+.ai-response-box {
+  background: var(--c-bg-card);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--c-accent);
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--c-text-primary);
+}
+.ai-instr-text p {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  color: var(--c-text-secondary);
 }
 </style>

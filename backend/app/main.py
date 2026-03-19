@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import engine, Base
-from .routers import team, services, portfolio, chat, auth, leads, upload, users
+from .routers import team, services, portfolio, chat, auth, leads, upload, users, ai
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -35,6 +35,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 
 # Mount static files
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
