@@ -188,11 +188,11 @@
         <h2 class="section__title reveal">Часто задаваемые вопросы</h2>
         <div class="faq-list">
           <div
-            v-for="(faq, index) in faqItems"
-            :key="index"
+            v-for="faq in faqItems"
+            :key="faq.question"
             class="faq-item reveal"
             :class="{ 'faq-item--open': faq.open }"
-            @click="toggleFaq(index)"
+            @click="toggleFaq(faq)"
           >
             <div class="faq-item__header">
               <h3 class="faq-item__question">{{ faq.question }}</h3>
@@ -323,9 +323,9 @@ const faqItems = ref([
   },
 ])
 
-const toggleFaq = (index) => {
-  faqItems.value.forEach((item, i) => {
-    if (i === index) {
+const toggleFaq = (targetItem) => {
+  faqItems.value.forEach((item) => {
+    if (item === targetItem) {
       item.open = !item.open
     } else {
       item.open = false

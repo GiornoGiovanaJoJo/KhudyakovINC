@@ -7,8 +7,7 @@ export function useScrollReveal() {
   const observed = new WeakSet()
 
   const observeElement = (el) => {
-    if (observed.has(el)) return
-    observed.add(el)
+    if (el.classList.contains('reveal--visible')) return
     intersectionObserver.observe(el)
   }
 
