@@ -324,10 +324,13 @@ const faqItems = ref([
 ])
 
 const toggleFaq = (index) => {
-  faqItems.value = faqItems.value.map((item, i) => ({
-    ...item,
-    open: i === index ? !item.open : false,
-  }))
+  faqItems.value.forEach((item, i) => {
+    if (i === index) {
+      item.open = !item.open
+    } else {
+      item.open = false
+    }
+  })
 }
 
 // Quiz Logic
