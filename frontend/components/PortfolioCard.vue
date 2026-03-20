@@ -1,5 +1,5 @@
 <template>
-  <NuxtLink :to="`/portfolio/${project.slug}`" class="portfolio-card card">
+  <NuxtLink :to="`/portfolio/${project.slug}`" class="portfolio-card card card-glow" ref="cardEl">
     <div class="portfolio-card__image">
       <img 
         v-if="project.image_url" 
@@ -24,6 +24,8 @@
 </template>
 
 <script setup>
+import { useTilt } from '~/composables/useAnimations'
+
 const props = defineProps({
   project: {
     type: Object,
@@ -34,6 +36,34 @@ const props = defineProps({
 const tagsList = computed(() =>
   props.project.tags ? props.project.tags.split(',').map((t) => t.trim()).filter(Boolean) : []
 )
+
+const cardEl = ref(null)
+
+onMounted(() => {
+  // For NuxtLink, we need to access the root element
+  if (cardEl.value?.$el) {
+    const el = ref(cardEl.value.$el)
+    
+    const maxDeg = 5
+    const handleMouseMove = (e) => {
+      const rect = el.value.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const centerX = rect.width / 2
+      const centerY = rect.height / 2
+      const rotateX = ((y - centerY) / centerY) * -maxDeg
+      const rotateY = ((x - centerX) / centerX) * maxDeg
+      el.value.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`
+      el.value.style.transition = 'transform 0.1s ease'
+    }
+    const handleMouseLeave = () => {
+      el.value.style.transform = 'perspective(800px) rotateX(0) rotateY(0) scale3d(1, 1, 1)'
+      el.value.style.transition = 'transform 0.5s ease'
+    }
+    el.value.addEventListener('mousemove', handleMouseMove)
+    el.value.addEventListener('mouseleave', handleMouseLeave)
+  }
+})
 </script>
 
 <style scoped>
@@ -44,6 +74,7 @@ const tagsList = computed(() =>
   color: inherit;
   overflow: hidden;
   padding: 0;
+  will-change: transform;
 }
 
 .portfolio-card__image {
@@ -62,7 +93,7 @@ const tagsList = computed(() =>
 }
 
 .portfolio-card:hover .portfolio-project-img {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .portfolio-card__image-placeholder {
@@ -117,6 +148,12 @@ const tagsList = computed(() =>
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   color: var(--c-text-muted);
+  transition: border-color 0.3s, color 0.3s;
+}
+
+.portfolio-card:hover .portfolio-card__tag {
+  border-color: var(--c-accent-glow);
+  color: var(--c-text-secondary);
 }
 
 .portfolio-card__arrow {

@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <!-- Header -->
-    <header class="header glass">
+    <header class="header glass" :class="{ 'header--scrolled': isScrolled }">
       <div class="container header__inner">
         <NuxtLink to="/" class="header__logo">
           <img src="/images/logo.png" alt="Logo" class="header__logo-img">
@@ -96,13 +96,31 @@
 
     <!-- Chat Widget -->
     <ChatWidget />
+
+    <!-- Scroll-to-top Button -->
+    <button
+      class="scroll-top-btn"
+      :class="{ 'scroll-top-btn--visible': showScrollTop }"
+      @click="scrollToTop"
+      aria-label="Наверх"
+    >
+      ↑
+    </button>
   </div>
 </template>
 
 <script setup>
+import { useHeaderShrink, useScrollToTop } from '~/composables/useAnimations'
+
 const menuOpen = ref(false)
 const isLoggedIn = ref(false)
 const user = ref(null)
+
+// Header shrink on scroll
+const isScrolled = useHeaderShrink()
+
+// Scroll-to-top button
+const { showButton: showScrollTop, scrollToTop } = useScrollToTop()
 
 // Check cookie or token on mount
 onMounted(async () => {
@@ -142,6 +160,12 @@ const handleLogout = () => {
 .main {
   flex: 1;
   padding-top: 80px;
+  transition: padding-top 0.3s var(--ease-out);
+}
+
+/* Adjust padding when header shrinks */
+.header--scrolled ~ .main {
+  padding-top: 60px;
 }
 
 /* ── Header ──────────────────────────────── */
@@ -153,6 +177,7 @@ const handleLogout = () => {
   z-index: 100;
   height: 80px;
   border-bottom: 1px solid var(--c-border);
+  transition: all 0.4s var(--ease-out);
 }
 
 .header__inner {
@@ -174,6 +199,7 @@ const handleLogout = () => {
   height: 40px;
   width: auto;
   object-fit: contain;
+  transition: height 0.3s var(--ease-out);
 }
 
 .header__logo-text {

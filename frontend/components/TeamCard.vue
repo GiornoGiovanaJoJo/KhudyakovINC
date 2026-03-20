@@ -1,5 +1,5 @@
 <template>
-  <div class="team-card card" @click="$emit('select', member)" tabindex="0">
+  <div class="team-card card card-glow" @click="$emit('select', member)" tabindex="0" ref="cardEl">
     <div class="team-card__avatar">
       <img v-if="member.photo_url" :src="member.photo_url" :alt="member.name" class="team-card__img" @error="member.photo_url = ''" />
       <div v-else class="team-card__avatar-placeholder">
@@ -18,6 +18,8 @@
 </template>
 
 <script setup>
+import { useTilt } from '~/composables/useAnimations'
+
 const props = defineProps({
   member: {
     type: Object,
@@ -30,6 +32,9 @@ defineEmits(['select'])
 const stackList = computed(() =>
   props.member.stack.split(',').map((s) => s.trim()).filter(Boolean)
 )
+
+const cardEl = ref(null)
+useTilt(cardEl, 6)
 </script>
 
 <style scoped>
@@ -37,6 +42,7 @@ const stackList = computed(() =>
   cursor: pointer;
   text-align: center;
   padding: var(--space-2xl) var(--space-xl);
+  will-change: transform;
 }
 
 .team-card:hover {
@@ -50,12 +56,13 @@ const stackList = computed(() =>
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid var(--c-border);
-  transition: border-color var(--duration-normal) var(--ease-out);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .team-card:hover .team-card__avatar {
   border-color: var(--c-accent);
   box-shadow: var(--shadow-glow);
+  transform: scale(1.05);
 }
 
 .team-card__img {
@@ -104,6 +111,11 @@ const stackList = computed(() =>
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   color: var(--c-text-secondary);
+  transition: all 0.3s;
+}
+
+.team-card:hover .team-card__tag {
+  border-color: var(--c-accent-glow);
 }
 
 .team-card__hint {

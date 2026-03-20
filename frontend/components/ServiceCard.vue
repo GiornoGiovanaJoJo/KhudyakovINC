@@ -1,5 +1,5 @@
 <template>
-  <div class="service-card card">
+  <div class="service-card card card-glow" ref="cardEl">
     <div class="service-card__icon">{{ service.icon }}</div>
     <h3 class="service-card__title">{{ service.title }}</h3>
     <p class="service-card__desc">{{ service.description }}</p>
@@ -7,18 +7,24 @@
 </template>
 
 <script setup>
-defineProps({
+import { useTilt } from '~/composables/useAnimations'
+
+const props = defineProps({
   service: {
     type: Object,
     required: true,
   },
 })
+
+const cardEl = ref(null)
+useTilt(cardEl, 6)
 </script>
 
 <style scoped>
 .service-card {
   text-align: center;
   padding: var(--space-2xl) var(--space-xl);
+  will-change: transform;
 }
 
 .service-card__icon {

@@ -6,31 +6,31 @@
         <InteractiveHero />
       </div>
       <div class="container hero__content">
-        <div class="hero__badge">🚀 Команда профессионалов</div>
+        <div class="hero__badge reveal">🚀 Команда профессионалов</div>
         <h1 class="hero__title">
           Превращаем идеи <br />
-          в <span class="text-gradient">цифровые продукты</span>
+          в <span class="text-gradient typewriter-word">{{ typedText }}<span class="typewriter-cursor"></span></span>
         </h1>
         <p class="hero__subtitle">
           Веб-разработка, дизайн и IT-консалтинг.
           Полный цикл: от идеи до запуска.
         </p>
         <div class="hero__actions">
-          <NuxtLink to="/portfolio" class="btn btn-primary">Наши работы</NuxtLink>
-          <NuxtLink to="/services" class="btn btn-outline">Услуги</NuxtLink>
+          <NuxtLink to="/portfolio" class="btn btn-primary" ref="btnPortfolio">Наши работы</NuxtLink>
+          <NuxtLink to="/services" class="btn btn-outline" ref="btnServices">Услуги</NuxtLink>
         </div>
 
         <div class="hero__stats">
-          <div class="hero__stat">
-            <div class="hero__stat-value">50+</div>
+          <div class="hero__stat" ref="stat1">
+            <div class="hero__stat-value">{{ countProjects }}</div>
             <div class="hero__stat-label">Проектов</div>
           </div>
-          <div class="hero__stat">
-            <div class="hero__stat-value">5+</div>
+          <div class="hero__stat" ref="stat2">
+            <div class="hero__stat-value">{{ countYears }}</div>
             <div class="hero__stat-label">Лет опыта</div>
           </div>
-          <div class="hero__stat">
-            <div class="hero__stat-value">30+</div>
+          <div class="hero__stat" ref="stat3">
+            <div class="hero__stat-value">{{ countClients }}</div>
             <div class="hero__stat-label">Довольных клиентов</div>
           </div>
         </div>
@@ -40,7 +40,7 @@
     <!-- Project Quiz (Kwiz) -->
     <section class="section quiz-bg">
       <div class="container">
-        <div class="quiz-card glass">
+        <div class="quiz-card glass reveal">
           <div v-if="!quizCompleted">
             <div class="quiz-progress">
               <div class="quiz-progress__bar" :style="{ width: ((quizStep + 1) / quizSteps.length) * 100 + '%' }"></div>
@@ -66,77 +66,85 @@
       </div>
     </section>
 
+    <hr class="section-divider" />
+
     <!-- Services Overview -->
     <section class="section">
       <div class="container">
-        <h2 class="section__title">Что мы умеем</h2>
-        <p class="section__subtitle">
+        <h2 class="section__title reveal">Что мы умеем</h2>
+        <p class="section__subtitle reveal">
           Мы предлагаем комплексные решения для запуска и развития вашего бизнеса в цифровой среде.
         </p>
-        <div class="grid-3">
+        <div class="grid-3 reveal-cascade">
           <ServiceCard
             v-for="service in topServices"
             :key="service.id"
             :service="service"
+            class="reveal"
           />
         </div>
-        <div class="text-center mt-xl">
+        <div class="text-center mt-xl reveal">
           <NuxtLink to="/services" class="btn btn-outline">Посмотреть все услуги</NuxtLink>
         </div>
       </div>
     </section>
 
+    <hr class="section-divider" />
+
     <!-- Portfolio Highlights -->
     <section class="section" style="background: var(--c-bg-secondary)">
       <div class="container">
-        <h2 class="section__title">Наши работы</h2>
-        <p class="section__subtitle">
+        <h2 class="section__title reveal">Наши работы</h2>
+        <p class="section__subtitle reveal">
           Проекты, которыми мы гордимся. Каждый из них — это уникальное решение сложной задачи.
         </p>
-        <div class="grid-3" v-if="portfolio.length">
+        <div class="grid-3 reveal-cascade" v-if="portfolio.length">
           <PortfolioCard
             v-for="project in portfolio.slice(0, 3)"
             :key="project.id"
             :project="project"
+            class="reveal"
           />
         </div>
-        <div class="text-center mt-xl">
+        <div class="text-center mt-xl reveal">
           <NuxtLink to="/portfolio" class="btn btn-outline">Весь портфель</NuxtLink>
         </div>
       </div>
     </section>
 
+    <hr class="section-divider" />
+
     <!-- How We Work -->
     <section class="section">
       <div class="container">
-        <h2 class="section__title">Как мы работаем</h2>
-        <p class="section__subtitle">
+        <h2 class="section__title reveal">Как мы работаем</h2>
+        <p class="section__subtitle reveal">
           Наш процесс прозрачен и эффективен. Мы сопровождаем вас на каждом этапе создания продукта.
         </p>
-        <div class="process-grid">
-          <div class="process-step">
-            <div class="process-step__icon">
+        <div class="process-grid reveal-cascade">
+          <div class="process-step reveal">
+            <div class="process-step__icon float-subtle">
               <img src="/images/steps/analytics.png" alt="Analytics">
             </div>
             <h3 class="process-step__title">Аналитика</h3>
             <p class="process-step__desc">Погружаемся в ваш бизнес, определяем цели и требования.</p>
           </div>
-          <div class="process-step">
-            <div class="process-step__icon">
+          <div class="process-step reveal">
+            <div class="process-step__icon float-subtle" style="animation-delay: 0.5s">
               <img src="/images/steps/design.png" alt="Design">
             </div>
             <h3 class="process-step__title">Дизайн</h3>
             <p class="process-step__desc">Создаем удобные и современные интерфейсы (UI/UX).</p>
           </div>
-          <div class="process-step">
-            <div class="process-step__icon">
+          <div class="process-step reveal">
+            <div class="process-step__icon float-subtle" style="animation-delay: 1s">
               <img src="/images/steps/dev.png" alt="Development">
             </div>
             <h3 class="process-step__title">Разработка</h3>
             <p class="process-step__desc">Пишем чистый код, используя передовой стек технологий.</p>
           </div>
-          <div class="process-step">
-            <div class="process-step__icon">
+          <div class="process-step reveal">
+            <div class="process-step__icon float-subtle" style="animation-delay: 1.5s">
               <img src="/images/steps/launch.png" alt="Launch">
             </div>
             <h3 class="process-step__title">Запуск</h3>
@@ -146,20 +154,23 @@
       </div>
     </section>
 
+    <hr class="section-divider" />
+
     <!-- Team Section -->
     <section class="section" id="team" style="background: var(--c-bg-secondary)">
       <div class="container">
-        <h2 class="section__title">Наша команда</h2>
-        <p class="section__subtitle">
+        <h2 class="section__title reveal">Наша команда</h2>
+        <p class="section__subtitle reveal">
           Профессионалы, которые создают ваш продукт
         </p>
 
-        <div class="grid-3" v-if="team.length">
+        <div class="grid-3 reveal-cascade" v-if="team.length">
           <TeamCard
             v-for="member in team"
             :key="member.id"
             :member="member"
             @select="selectedMember = member"
+            class="reveal"
           />
         </div>
 
@@ -169,48 +180,65 @@
       </div>
     </section>
 
+    <hr class="section-divider" />
+
     <!-- FAQ Section -->
     <section class="section">
       <div class="container">
-        <h2 class="section__title">Часто задаваемые вопросы</h2>
+        <h2 class="section__title reveal">Часто задаваемые вопросы</h2>
         <div class="faq-list">
-          <div class="faq-item">
-            <h3 class="faq-item__question">Сколько времени занимает разработка?</h3>
-            <p class="faq-item__answer">Сроки зависят от сложности проекта. Корпоративный сайт — от 2 недель, сложный сервис или CRM — от 1.5 месяцев.</p>
-          </div>
-          <div class="faq-item">
-            <h3 class="faq-item__question">Какие технологии вы используете?</h3>
-            <p class="faq-item__answer">Мы работаем с современным стеком: Vue.js/Nuxt.js, React, Node.js, Python (FastAPI/Django), PostgreSQL и Docker.</p>
-          </div>
-          <div class="faq-item">
-            <h3 class="faq-item__question">Оказываете ли вы поддержку после запуска?</h3>
-            <p class="faq-item__answer">Да, мы предлагаем гарантийное обслуживание в течение года и услуги по развитию вашего продукта.</p>
+          <div
+            v-for="(faq, index) in faqItems"
+            :key="index"
+            class="faq-item reveal"
+            :class="{ 'faq-item--open': faq.open }"
+            @click="toggleFaq(index)"
+          >
+            <div class="faq-item__header">
+              <h3 class="faq-item__question">{{ faq.question }}</h3>
+              <span class="faq-item__arrow">▼</span>
+            </div>
+            <div class="faq-item__answer">
+              <p>{{ faq.answer }}</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Tech Stack -->
+    <hr class="section-divider" />
+
+    <!-- Tech Stack — Interactive Grid -->
     <section class="section" style="background: var(--c-bg-secondary)">
       <div class="container">
-        <h2 class="section__title">Наш технологический стек</h2>
-        <div class="tech-grid">
-          <div v-for="tech in techStack" :key="tech.name" class="tech-item glass">
-            <span class="tech-icon">
-              <img :src="tech.icon" :alt="tech.name" class="tech-icon__img">
-            </span>
-            <span class="tech-name">{{ tech.name }}</span>
+        <h2 class="section__title reveal">Наш технологический стек</h2>
+        <p class="section__subtitle reveal">Используем проверенные технологии для надёжных решений</p>
+        <div class="tech-orbit-grid reveal-cascade">
+          <div
+            v-for="(tech, i) in techStack"
+            :key="tech.name"
+            class="tech-orbit-card glass reveal"
+            :style="{ animationDelay: (i * 0.4) + 's' }"
+          >
+            <div class="tech-orbit-card__glow"></div>
+            <div class="tech-orbit-card__icon">
+              <img :src="tech.icon" :alt="tech.name">
+            </div>
+            <div class="tech-orbit-card__name">{{ tech.name }}</div>
+            <div class="tech-orbit-card__desc">{{ tech.desc }}</div>
           </div>
         </div>
       </div>
     </section>
+
+    <hr class="section-divider" />
 
     <!-- Testimonials -->
     <section class="section testimonials-bg">
       <div class="container">
-        <h2 class="section__title">Что говорят клиенты</h2>
+        <h2 class="section__title reveal">Что говорят клиенты</h2>
         <div class="testimonials-slider">
-          <div v-for="t in testimonials" :key="t.name" class="testimonial-card glass">
+          <div v-for="t in testimonials" :key="t.name" class="testimonial-card glass reveal">
             <p class="testimonial-text">"{{ t.text }}"</p>
             <div class="testimonial-author">
               <div class="testimonial-avatar">{{ t.name[0] }}</div>
@@ -223,6 +251,7 @@
         </div>
       </div>
     </section>
+
     <TeamModal
       v-if="selectedMember"
       :member="selectedMember"
@@ -232,26 +261,74 @@
     <!-- CTA Section -->
     <section class="cta section">
       <div class="container text-center">
-        <h2 class="section__title">Готовы обсудить проект?</h2>
-        <p class="section__subtitle mb-xl">
+        <h2 class="section__title reveal">Готовы обсудить проект?</h2>
+        <p class="section__subtitle mb-xl reveal">
           Расскажите о вашей задаче в чате — наш ИИ-консультант ответит мгновенно
           и поможет подготовить коммерческое предложение.
         </p>
-        <button class="btn btn-primary" @click="openChat">💬 Начать диалог</button>
+        <button class="btn btn-primary btn-pulse reveal" @click="openChat">💬 Начать диалог</button>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
+import { useScrollReveal, useCountUp, useTypewriter } from '~/composables/useAnimations'
+
 useHead({
   title: 'Khudyakov Inc. — Веб-разработка, дизайн и IT-решения',
 })
 
+// ─── Scroll Reveal ────────────────────────────────────
+useScrollReveal()
+
+// ─── Typewriter Effect ────────────────────────────────
+const { displayText: typedText } = useTypewriter(
+  ['цифровые продукты', 'веб-приложения', 'мобильные решения', 'CRM-системы', 'стартапы'],
+  90,
+  40,
+  2500
+)
+
+// ─── Animated Counters ────────────────────────────────
+const stat1 = ref(null)
+const stat2 = ref(null)
+const stat3 = ref(null)
+const countProjects = useCountUp(stat1, 50, 2000, '+')
+const countYears = useCountUp(stat2, 5, 1500, '+')
+const countClients = useCountUp(stat3, 30, 1800, '+')
+
+// ─── State ────────────────────────────────────────────
 const selectedMember = ref(null)
 const team = ref([])
 const portfolio = ref([])
 const services = ref([])
+
+// ─── FAQ Accordion ────────────────────────────────────
+const faqItems = ref([
+  {
+    question: 'Сколько времени занимает разработка?',
+    answer: 'Сроки зависят от сложности проекта. Корпоративный сайт — от 2 недель, сложный сервис или CRM — от 1.5 месяцев.',
+    open: false,
+  },
+  {
+    question: 'Какие технологии вы используете?',
+    answer: 'Мы работаем с современным стеком: Vue.js/Nuxt.js, React, Node.js, Python (FastAPI/Django), PostgreSQL и Docker.',
+    open: false,
+  },
+  {
+    question: 'Оказываете ли вы поддержку после запуска?',
+    answer: 'Да, мы предлагаем гарантийное обслуживание в течение года и услуги по развитию вашего продукта.',
+    open: false,
+  },
+])
+
+const toggleFaq = (index) => {
+  faqItems.value = faqItems.value.map((item, i) => ({
+    ...item,
+    open: i === index ? !item.open : false,
+  }))
+}
 
 // Quiz Logic
 const quizStep = ref(0)
@@ -278,7 +355,6 @@ const selectOption = (option) => {
     quizStep.value++
   } else {
     quizCompleted.value = true
-    // Save structured context for ChatWidget
     const context = {
       type: quizAnswers.value[0],
       design: quizAnswers.value[1],
@@ -294,12 +370,12 @@ const startChatWithQuiz = () => {
 
 // Content Data
 const techStack = [
-  { name: "Vue / Nuxt", icon: "/images/icons/vue.png" },
-  { name: "Node.js", icon: "/images/icons/node.png" },
-  { name: "Python / FastAPI", icon: "/images/icons/python.png" },
-  { name: "PostgreSQL", icon: "/images/icons/postgres.png" },
-  { name: "Docker", icon: "/images/icons/docker.png" },
-  { name: "Figma", icon: "/images/icons/figma.png" }
+  { name: "Vue / Nuxt", icon: "/images/icons/vue.png", desc: "Реактивные интерфейсы и SSR" },
+  { name: "Node.js", icon: "/images/icons/node.png", desc: "Высоконагруженные API" },
+  { name: "Python / FastAPI", icon: "/images/icons/python.png", desc: "ML, автоматизация, бэкенд" },
+  { name: "PostgreSQL", icon: "/images/icons/postgres.png", desc: "Надёжное хранение данных" },
+  { name: "Docker", icon: "/images/icons/docker.png", desc: "Контейнеризация и деплой" },
+  { name: "Figma", icon: "/images/icons/figma.png", desc: "UI/UX дизайн и прототипы" }
 ]
 
 const testimonials = [
@@ -325,6 +401,32 @@ const openChat = () => {
   const toggle = document.getElementById('chat-toggle')
   if (toggle) toggle.click()
 }
+
+// ─── Magnetic Buttons ─────────────────────────────────
+const btnPortfolio = ref(null)
+const btnServices = ref(null)
+
+onMounted(() => {
+  // Magnetic effect for hero buttons
+  const magneticSetup = (el) => {
+    if (!el?.$el) return
+    const node = el.$el
+    node.addEventListener('mousemove', (e) => {
+      const rect = node.getBoundingClientRect()
+      const x = e.clientX - rect.left - rect.width / 2
+      const y = e.clientY - rect.top - rect.height / 2
+      node.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`
+      node.style.transition = 'transform 0.15s ease'
+    })
+    node.addEventListener('mouseleave', () => {
+      node.style.transform = 'translate(0, 0)'
+      node.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+    })
+  }
+
+  magneticSetup(btnPortfolio.value)
+  magneticSetup(btnServices.value)
+})
 </script>
 
 <style scoped>
@@ -356,14 +458,12 @@ const openChat = () => {
   transform: translateX(-50%);
   filter: blur(80px);
   opacity: 0.5;
+  animation: pulseOrb 6s ease-in-out infinite;
 }
 
-.hero__bg-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.4;
-  filter: saturate(1.2) brightness(0.8);
+@keyframes pulseOrb {
+  0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.55; transform: translateX(-50%) scale(1.1); }
 }
 
 .hero__content {
@@ -392,6 +492,10 @@ const openChat = () => {
   letter-spacing: -0.03em;
   margin-bottom: var(--space-xl);
   animation: slideUp 0.8s var(--ease-out);
+}
+
+.typewriter-word {
+  display: inline;
 }
 
 .hero__subtitle {
@@ -442,6 +546,25 @@ const openChat = () => {
   background: var(--c-gradient-hero);
   border-top: 1px solid var(--c-border);
   border-bottom: 1px solid var(--c-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, var(--c-accent-glow) 0%, transparent 50%);
+  opacity: 0.08;
+  animation: rotateBg 20s linear infinite;
+}
+
+@keyframes rotateBg {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ── Responsive ───────────────────────────── */
@@ -522,6 +645,17 @@ const openChat = () => {
   font-size: 1rem;
   cursor: pointer;
   transition: all var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.quiz-option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--c-gradient-1);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .quiz-option:hover {
@@ -531,69 +665,92 @@ const openChat = () => {
   transform: translateY(-2px);
 }
 
-/* ── Tech Stack ────────────────────────────── */
-.tech-grid {
+/* ── Tech Stack — Orbit Grid ────────────── */
+.tech-orbit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-lg);
-  margin-top: var(--space-2xl);
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
 }
 
-.tech-item {
-  padding: var(--space-lg);
+.tech-orbit-card {
+  position: relative;
   text-align: center;
-  border-radius: var(--radius-md);
-  transition: transform 0.3s;
-}
-
-.tech-item:hover {
-  transform: translateY(-5px);
-}
-
-.process-step__icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto var(--space-md);
-  padding: var(--space-sm);
-  background: var(--c-bg-glass);
-  border: 1px solid var(--c-border);
+  padding: var(--space-2xl) var(--space-xl);
   border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--duration-normal);
+  transition: all 0.4s var(--ease-out);
+  animation: techBreathe 5s ease-in-out infinite;
+  will-change: transform;
+  overflow: hidden;
 }
 
-.process-step:hover .process-step__icon {
-  transform: translateY(-5px) scale(1.05);
+.tech-orbit-card:nth-child(even) {
+  animation-direction: reverse;
+}
+
+@keyframes techBreathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.tech-orbit-card__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, var(--c-accent-glow) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.tech-orbit-card:hover .tech-orbit-card__glow {
+  opacity: 0.3;
+}
+
+.tech-orbit-card:hover {
+  transform: translateY(-8px) scale(1.03);
   border-color: var(--c-accent);
+  box-shadow: 0 8px 40px var(--c-accent-glow);
 }
 
-.process-step__icon img {
+.tech-orbit-card__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-md);
+  transition: transform 0.5s var(--ease-spring);
+}
+
+.tech-orbit-card__icon img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.tech-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin: 0 auto var(--space-sm);
+.tech-orbit-card:hover .tech-orbit-card__icon {
+  transform: scale(1.2) rotate(8deg);
 }
 
-.tech-icon__img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.tech-orbit-card__name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+  color: var(--c-text-primary);
 }
 
-.tech-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+.tech-orbit-card__desc {
+  font-size: 0.85rem;
+  color: var(--c-text-muted);
+  line-height: 1.5;
+  transition: color 0.3s;
+}
+
+.tech-orbit-card:hover .tech-orbit-card__desc {
   color: var(--c-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .tech-orbit-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+  }
 }
 
 /* ── Testimonials ──────────────────────────── */
@@ -607,6 +764,7 @@ const openChat = () => {
   overflow-x: auto;
   padding: var(--space-xl) var(--space-sm);
   scrollbar-width: none;
+  scroll-snap-type: x mandatory;
 }
 
 .testimonials-slider::-webkit-scrollbar { display: none; }
@@ -617,6 +775,13 @@ const openChat = () => {
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
+  scroll-snap-align: start;
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
 }
 
 .testimonial-text {
@@ -653,5 +818,9 @@ const openChat = () => {
 .testimonial-role {
   font-size: 0.8rem;
   color: var(--c-text-muted);
+}
+
+.mt-xl {
+  margin-top: var(--space-xl);
 }
 </style>
