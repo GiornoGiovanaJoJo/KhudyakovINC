@@ -35,18 +35,12 @@ export function useScrollReveal() {
           if (node.classList?.contains('reveal')) observeElement(node)
           node.querySelectorAll?.('.reveal').forEach(observeElement)
         }
-        // Also check if class was added to existing node
-        if (mutation.type === 'attributes' && mutation.target.classList?.contains('reveal')) {
-          observeElement(mutation.target)
-        }
       }
     })
 
     mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ['class'],
     })
   })
 

@@ -155,16 +155,20 @@ const handleLogout = () => {
   navigateTo('/')
 }
 
-// Ambient cursor glow
+// Ambient cursor glow — throttled via rAF, GPU-accelerated transform
 const cursorPos = reactive({ x: -200, y: -200 })
+let glowRafQueued = false
 const onGlobalMouseMove = (e) => {
-  if (window.innerWidth < 768) return
-  cursorPos.x = e.clientX
-  cursorPos.y = e.clientY
+  if (window.innerWidth < 768 || glowRafQueued) return
+  glowRafQueued = true
+  requestAnimationFrame(() => {
+    cursorPos.x = e.clientX
+    cursorPos.y = e.clientY
+    glowRafQueued = false
+  })
 }
 const ambientGlowStyle = computed(() => ({
-  left: `${cursorPos.x}px`,
-  top: `${cursorPos.y}px`,
+  transform: `translate3d(${cursorPos.x - 300}px, ${cursorPos.y - 300}px, 0)`,
 }))
 </script>
 
@@ -395,20 +399,21 @@ const ambientGlowStyle = computed(() => ({
 /* ── Ambient Cursor Glow ─────────────────── */
 .ambient-glow {
   position: fixed;
+  top: 0;
+  left: 0;
   width: 600px;
   height: 600px;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  transform: translate(-50%, -50%);
   background: radial-gradient(
     circle,
     rgba(108, 92, 231, 0.06) 0%,
     rgba(108, 92, 231, 0.03) 30%,
     transparent 70%
   );
-  transition: left 0.3s ease-out, top 0.3s ease-out;
-  will-change: left, top;
+  will-change: transform;
+  transition: transform 0.25s ease-out;
 }
 
 @media (max-width: 768px) {

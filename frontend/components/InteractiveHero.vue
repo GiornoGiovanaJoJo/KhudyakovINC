@@ -12,16 +12,40 @@ const canvas = ref(null)
 let ctx = null
 let animationFrameId = null
 let particles = []
-const mouse = { x: null, y: null, radius: 180 }
-const trail = []
-const MAX_TRAIL = 12
+const mouse = { x: null, y: null, radius: 120 }
+let isVisible = true
+
+// ─── Spatial Grid for O(n) connection lookups ────────
+const CELL_SIZE = 120
+let grid = {}
+
+function getCellKey(x, y) {
+  return `${Math.floor(x / CELL_SIZE)},${Math.floor(y / CELL_SIZE)}`
+}
+
+function buildGrid() {
+  grid = {}
+  for (let i = 0; i < particles.length; i++) {
+    const key = getCellKey(particles[i].x, particles[i].y)
+    if (!grid[key]) grid[key] = []
+    grid[key].push(i)
+  }
+}
+
+function getNeighborKeys(cx, cy) {
+  const keys = []
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      keys.push(`${cx + dx},${cy + dy}`)
+    }
+  }
+  return keys
+}
 
 class Particle {
   constructor(x, y, size, baseColor, speedX, speedY, layer) {
     this.x = x
     this.y = y
-    this.baseX = x
-    this.baseY = y
     this.size = size
     this.baseSize = size
     this.baseColor = baseColor
@@ -29,7 +53,7 @@ class Particle {
     this.speedX = speedX
     this.speedY = speedY
     this.density = (Math.random() * 30) + 1
-    this.layer = layer // 0 = far/dim, 1 = mid, 2 = near/bright
+    this.layer = layer
     this.alpha = layer === 0 ? 0.3 : layer === 1 ? 0.6 : 0.9
     this.baseAlpha = this.alpha
   }
@@ -43,12 +67,12 @@ class Particle {
     ctx.globalAlpha = 1
   }
 
-  update() {
+  update(w, h) {
     this.x += this.speedX * (0.5 + this.layer * 0.3)
     this.y += this.speedY * (0.5 + this.layer * 0.3)
 
-    if (this.x < 0 || this.x > canvas.value.width) this.speedX = -this.speedX
-    if (this.y < 0 || this.y > canvas.value.height) this.speedY = -this.speedY
+    if (this.x < 0 || this.x > w) this.speedX = -this.speedX
+    if (this.y < 0 || this.y > h) this.speedY = -this.speedY
 
     if (mouse.x != null && mouse.y != null) {
       const dx = mouse.x - this.x
@@ -63,7 +87,6 @@ class Particle {
         this.x -= forceDirectionX * force * this.density * 0.6
         this.y -= forceDirectionY * force * this.density * 0.6
 
-        // Glow up near cursor
         this.size = this.baseSize + force * 2
         this.alpha = Math.min(1, this.baseAlpha + force * 0.5)
         this.color = `rgba(162, 155, 254, ${0.6 + force * 0.4})`
@@ -84,8 +107,17 @@ class Particle {
 
 const init = () => {
   particles = []
-  const area = canvas.value.width * canvas.value.height
-  const numberOfParticles = area / 7000
+  const w = canvas.value.width
+  const h = canvas.value.height
+  // Reduced density: was /7000, now /12000
+  const numberOfParticles = Math.min((w * h) / 12000, 200)
+
+  const colors = [
+    'rgba(108, 92, 231, 0.8)',
+    'rgba(162, 155, 254, 0.7)',
+    'rgba(253, 121, 168, 0.6)',
+    'rgba(0, 206, 201, 0.5)',
+  ]
 
   for (let i = 0; i < numberOfParticles; i++) {
     const layer = Math.random() < 0.3 ? 0 : Math.random() < 0.6 ? 1 : 2
@@ -93,119 +125,145 @@ const init = () => {
               : layer === 1 ? Math.random() * 1.5 + 0.8
               : Math.random() * 2.5 + 1.2
 
-    const x = Math.random() * canvas.value.width
-    const y = Math.random() * canvas.value.height
-    const speedX = (Math.random() * 0.6) - 0.3
-    const speedY = (Math.random() * 0.6) - 0.3
-
-    const colors = [
-      'rgba(108, 92, 231, 0.8)',
-      'rgba(162, 155, 254, 0.7)',
-      'rgba(253, 121, 168, 0.6)',
-      'rgba(0, 206, 201, 0.5)',
-    ]
-    const color = colors[Math.floor(Math.random() * colors.length)]
-
-    particles.push(new Particle(x, y, size, color, speedX, speedY, layer))
+    particles.push(new Particle(
+      Math.random() * w,
+      Math.random() * h,
+      size,
+      colors[Math.floor(Math.random() * colors.length)],
+      (Math.random() * 0.6) - 0.3,
+      (Math.random() * 0.6) - 0.3,
+      layer
+    ))
   }
 }
 
 const drawCursorGlow = () => {
   if (mouse.x == null || mouse.y == null) return
-
-  // Main glow
-  const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 200)
+  const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 180)
   gradient.addColorStop(0, 'rgba(108, 92, 231, 0.12)')
   gradient.addColorStop(0.4, 'rgba(108, 92, 231, 0.05)')
   gradient.addColorStop(1, 'transparent')
   ctx.fillStyle = gradient
-  ctx.fillRect(mouse.x - 200, mouse.y - 200, 400, 400)
-
-  // Trail
-  for (let i = 0; i < trail.length; i++) {
-    const t = trail[i]
-    const age = 1 - (i / trail.length)
-    const r = 30 * age
-    const tGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, r)
-    tGrad.addColorStop(0, `rgba(162, 155, 254, ${0.08 * age})`)
-    tGrad.addColorStop(1, 'transparent')
-    ctx.fillStyle = tGrad
-    ctx.fillRect(t.x - r, t.y - r, r * 2, r * 2)
-  }
+  ctx.fillRect(mouse.x - 180, mouse.y - 180, 360, 360)
 }
 
 const connect = () => {
-  for (let a = 0; a < particles.length; a++) {
-    for (let b = a + 1; b < particles.length; b++) {
-      const dx = particles[a].x - particles[b].x
-      const dy = particles[a].y - particles[b].y
-      const distance = dx * dx + dy * dy
-      const maxDist = (canvas.value.width / 8) * (canvas.value.height / 8)
-      if (distance < maxDist) {
-        let opacity = 1 - (distance / maxDist)
+  // Build spatial grid once per frame
+  buildGrid()
 
-        // Brighter connections near cursor
-        if (mouse.x != null && mouse.y != null) {
-          const midX = (particles[a].x + particles[b].x) / 2
-          const midY = (particles[a].y + particles[b].y) / 2
-          const cursorDist = Math.sqrt((mouse.x - midX) ** 2 + (mouse.y - midY) ** 2)
-          if (cursorDist < mouse.radius) {
-            opacity *= 1 + (1 - cursorDist / mouse.radius) * 2
+  const maxDistSq = CELL_SIZE * CELL_SIZE
+  const checked = new Set()
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i]
+    const cx = Math.floor(p.x / CELL_SIZE)
+    const cy = Math.floor(p.y / CELL_SIZE)
+    const neighborKeys = getNeighborKeys(cx, cy)
+
+    for (const key of neighborKeys) {
+      const cell = grid[key]
+      if (!cell) continue
+
+      for (const j of cell) {
+        if (j <= i) continue
+        const pairKey = i * 10000 + j
+        if (checked.has(pairKey)) continue
+        checked.add(pairKey)
+
+        const dx = p.x - particles[j].x
+        const dy = p.y - particles[j].y
+        const distSq = dx * dx + dy * dy
+
+        if (distSq < maxDistSq) {
+          let opacity = 1 - (distSq / maxDistSq)
+
+          if (mouse.x != null && mouse.y != null) {
+            const midX = (p.x + particles[j].x) / 2
+            const midY = (p.y + particles[j].y) / 2
+            const cursorDist = Math.sqrt((mouse.x - midX) ** 2 + (mouse.y - midY) ** 2)
+            if (cursorDist < mouse.radius) {
+              opacity *= 1 + (1 - cursorDist / mouse.radius) * 2
+            }
           }
-        }
 
-        ctx.strokeStyle = `rgba(140, 150, 255, ${opacity * 0.12})`
-        ctx.lineWidth = 0.6
-        ctx.beginPath()
-        ctx.moveTo(particles[a].x, particles[a].y)
-        ctx.lineTo(particles[b].x, particles[b].y)
-        ctx.stroke()
+          ctx.strokeStyle = `rgba(140, 150, 255, ${opacity * 0.12})`
+          ctx.lineWidth = 0.6
+          ctx.beginPath()
+          ctx.moveTo(p.x, p.y)
+          ctx.lineTo(particles[j].x, particles[j].y)
+          ctx.stroke()
+        }
       }
     }
   }
 }
 
 const animate = () => {
+  if (!isVisible || !canvas.value) return
   animationFrameId = requestAnimationFrame(animate)
-  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height)
+
+  const w = canvas.value.width
+  const h = canvas.value.height
+  ctx.clearRect(0, 0, w, h)
 
   drawCursorGlow()
 
   for (let i = 0; i < particles.length; i++) {
-    particles[i].update()
+    particles[i].update(w, h)
   }
   connect()
 }
 
+let resizeTimeout = null
 const handleResize = () => {
-  canvas.value.width = container.value.offsetWidth
-  canvas.value.height = container.value.offsetHeight
-  init()
+  // Debounce resize to avoid thrashing
+  clearTimeout(resizeTimeout)
+  resizeTimeout = setTimeout(() => {
+    if (!canvas.value || !container.value) return
+    canvas.value.width = container.value.offsetWidth
+    canvas.value.height = container.value.offsetHeight
+    init()
+  }, 150)
 }
 
+let mouseMoveQueued = false
 const handleMouseMove = (event) => {
-  const rect = canvas.value.getBoundingClientRect()
-  mouse.x = event.clientX - rect.left
-  mouse.y = event.clientY - rect.top
-
-  trail.unshift({ x: mouse.x, y: mouse.y })
-  if (trail.length > MAX_TRAIL) trail.pop()
+  if (mouseMoveQueued) return
+  mouseMoveQueued = true
+  requestAnimationFrame(() => {
+    if (!canvas.value) return
+    const rect = canvas.value.getBoundingClientRect()
+    mouse.x = event.clientX - rect.left
+    mouse.y = event.clientY - rect.top
+    mouseMoveQueued = false
+  })
 }
 
 const handleMouseLeave = () => {
   mouse.x = null
   mouse.y = null
-  trail.length = 0
 }
+
+// Pause animation when not in viewport
+let visibilityObserver = null
 
 onMounted(() => {
   ctx = canvas.value.getContext('2d')
   canvas.value.width = container.value.offsetWidth
   canvas.value.height = container.value.offsetHeight
 
-  window.addEventListener('resize', handleResize)
-  canvas.value.addEventListener('mousemove', handleMouseMove)
+  window.addEventListener('resize', handleResize, { passive: true })
+  canvas.value.addEventListener('mousemove', handleMouseMove, { passive: true })
   canvas.value.addEventListener('mouseleave', handleMouseLeave)
+
+  // Only animate when hero is visible
+  visibilityObserver = new IntersectionObserver((entries) => {
+    isVisible = entries[0].isIntersecting
+    if (isVisible && !animationFrameId) {
+      animate()
+    }
+  }, { threshold: 0 })
+  visibilityObserver.observe(container.value)
 
   init()
   animate()
@@ -218,6 +276,9 @@ onBeforeUnmount(() => {
     canvas.value.removeEventListener('mouseleave', handleMouseLeave)
   }
   cancelAnimationFrame(animationFrameId)
+  animationFrameId = null
+  clearTimeout(resizeTimeout)
+  visibilityObserver?.disconnect()
 })
 </script>
 
@@ -241,4 +302,3 @@ canvas {
   left: 0;
 }
 </style>
-

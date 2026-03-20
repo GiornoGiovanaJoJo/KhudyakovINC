@@ -84,18 +84,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Subtle noise texture for depth */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 256px 256px;
-}
+/* Noise texture removed for performance — was a full-screen SVG filter on z-index:9999 */
 
 a {
   color: var(--c-accent-light);
@@ -252,9 +241,9 @@ img {
 
 /* ── Glassmorphism helper ────────────────────────────── */
 .glass {
-  background: var(--c-bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(18, 18, 26, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--c-border);
 }
 
@@ -746,9 +735,13 @@ img {
   padding-top: var(--space-md);
 }
 
-/* ── CTA Pulse Glow ──────────────────────────────────── */
+/* ── CTA Pulse Glow — hover only ─────────────────────── */
 .btn-pulse {
-  animation: pulseGlow 2.5s ease-in-out infinite;
+  transition: box-shadow 0.4s ease;
+}
+
+.btn-pulse:hover {
+  box-shadow: 0 0 30px var(--c-accent-glow), 0 0 60px rgba(108, 92, 231, 0.15);
 }
 
 /* ── Process Step Connecting Line ─────────────────────── */
@@ -790,7 +783,11 @@ img {
 }
 
 .float-subtle {
-  animation: subtleFloat 6s ease-in-out infinite;
+  transition: transform 0.4s var(--ease-out);
+}
+
+.float-subtle:hover {
+  transform: translateY(-6px) rotate(1deg);
 }
 
 /* ── Staggered card animations from bottom ───────────── */

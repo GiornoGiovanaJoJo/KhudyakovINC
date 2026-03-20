@@ -131,28 +131,28 @@
         <div class="process-grid reveal-cascade">
           <div class="process-step reveal">
             <div class="process-step__icon float-subtle">
-              <img src="/images/steps/analytics.png" alt="Analytics">
+            <img src="/images/steps/analytics.png" alt="Analytics" loading="lazy" decoding="async">
             </div>
             <h3 class="process-step__title">Аналитика</h3>
             <p class="process-step__desc">Погружаемся в ваш бизнес, определяем цели и требования.</p>
           </div>
           <div class="process-step reveal">
             <div class="process-step__icon float-subtle" style="animation-delay: 0.5s">
-              <img src="/images/steps/design.png" alt="Design">
+            <img src="/images/steps/design.png" alt="Design" loading="lazy" decoding="async">
             </div>
             <h3 class="process-step__title">Дизайн</h3>
             <p class="process-step__desc">Создаем удобные и современные интерфейсы (UI/UX).</p>
           </div>
           <div class="process-step reveal">
             <div class="process-step__icon float-subtle" style="animation-delay: 1s">
-              <img src="/images/steps/dev.png" alt="Development">
+            <img src="/images/steps/dev.png" alt="Development" loading="lazy" decoding="async">
             </div>
             <h3 class="process-step__title">Разработка</h3>
             <p class="process-step__desc">Пишем чистый код, используя передовой стек технологий.</p>
           </div>
           <div class="process-step reveal">
             <div class="process-step__icon float-subtle" style="animation-delay: 1.5s">
-              <img src="/images/steps/launch.png" alt="Launch">
+            <img src="/images/steps/launch.png" alt="Launch" loading="lazy" decoding="async">
             </div>
             <h3 class="process-step__title">Запуск</h3>
             <p class="process-step__desc">Тестируем и выводим проект на рынок, обеспечивая поддержку.</p>
@@ -225,11 +225,10 @@
             v-for="(tech, i) in techStack"
             :key="tech.name"
             class="tech-orbit-card glass reveal"
-            :style="{ animationDelay: (i * 0.4) + 's' }"
           >
             <div class="tech-orbit-card__glow"></div>
             <div class="tech-orbit-card__icon">
-              <img :src="tech.icon" :alt="tech.name">
+              <img :src="tech.icon" :alt="tech.name" loading="lazy" decoding="async">
             </div>
             <div class="tech-orbit-card__name">{{ tech.name }}</div>
             <div class="tech-orbit-card__desc">{{ tech.desc }}</div>
@@ -643,13 +642,9 @@ onMounted(() => {
   border-radius: var(--radius-full);
   background: var(--c-gradient-1);
   box-shadow: 0 0 12px var(--c-accent-glow), 0 0 30px rgba(108, 92, 231, 0.15);
-  animation: statGlowPulse 3s ease-in-out infinite;
 }
 
-@keyframes statGlowPulse {
-  0%, 100% { opacity: 0.6; width: 40px; }
-  50% { opacity: 1; width: 55px; }
-}
+/* statGlowPulse removed — static glow is sufficient and lighter */
 
 .hero__stat-label {
   font-size: 0.85rem;
@@ -675,12 +670,6 @@ onMounted(() => {
   height: 200%;
   background: radial-gradient(circle at center, var(--c-accent-glow) 0%, transparent 50%);
   opacity: 0.08;
-  animation: rotateBg 20s linear infinite;
-}
-
-@keyframes rotateBg {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* ── Responsive ───────────────────────────── */
@@ -793,19 +782,14 @@ onMounted(() => {
   text-align: center;
   padding: var(--space-2xl) var(--space-xl);
   border-radius: var(--radius-lg);
-  transition: all 0.4s var(--ease-out);
-  animation: techBreathe 5s ease-in-out infinite;
-  will-change: transform;
+  transition: all 0.4s var(--ease-out), transform 0.5s ease-in-out;
   overflow: hidden;
 }
 
-.tech-orbit-card:nth-child(even) {
-  animation-direction: reverse;
-}
-
-@keyframes techBreathe {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+.tech-orbit-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  border-color: var(--c-accent);
+  box-shadow: 0 8px 40px var(--c-accent-glow);
 }
 
 .tech-orbit-card__glow {
@@ -819,12 +803,6 @@ onMounted(() => {
 
 .tech-orbit-card:hover .tech-orbit-card__glow {
   opacity: 0.3;
-}
-
-.tech-orbit-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  border-color: var(--c-accent);
-  box-shadow: 0 8px 40px var(--c-accent-glow);
 }
 
 .tech-orbit-card__icon {
