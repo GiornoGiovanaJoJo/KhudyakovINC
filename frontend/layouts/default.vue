@@ -1,5 +1,5 @@
 <template>
-  <div class="layout">
+  <div class="layout" @mousemove="onGlobalMouseMove">
     <!-- Header -->
     <header class="header glass" :class="{ 'header--scrolled': isScrolled }">
       <div class="container header__inner">
@@ -106,6 +106,12 @@
     >
       ↑
     </button>
+
+    <!-- Ambient Cursor Glow -->
+    <div
+      class="ambient-glow"
+      :style="ambientGlowStyle"
+    ></div>
   </div>
 </template>
 
@@ -148,6 +154,18 @@ const handleLogout = () => {
   user.value = null
   navigateTo('/')
 }
+
+// Ambient cursor glow
+const cursorPos = reactive({ x: -200, y: -200 })
+const onGlobalMouseMove = (e) => {
+  if (window.innerWidth < 768) return
+  cursorPos.x = e.clientX
+  cursorPos.y = e.clientY
+}
+const ambientGlowStyle = computed(() => ({
+  left: `${cursorPos.x}px`,
+  top: `${cursorPos.y}px`,
+}))
 </script>
 
 <style scoped>
@@ -371,6 +389,31 @@ const handleLogout = () => {
 
   .header__link {
     font-size: 1.2rem;
+  }
+}
+
+/* ── Ambient Cursor Glow ─────────────────── */
+.ambient-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(108, 92, 231, 0.06) 0%,
+    rgba(108, 92, 231, 0.03) 30%,
+    transparent 70%
+  );
+  transition: left 0.3s ease-out, top 0.3s ease-out;
+  will-change: left, top;
+}
+
+@media (max-width: 768px) {
+  .ambient-glow {
+    display: none;
   }
 }
 </style>

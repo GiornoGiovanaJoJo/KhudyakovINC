@@ -12,56 +12,70 @@ const canvas = ref(null)
 let ctx = null
 let animationFrameId = null
 let particles = []
-const mouse = { x: null, y: null, radius: 150 }
+const mouse = { x: null, y: null, radius: 180 }
+const trail = []
+const MAX_TRAIL = 12
 
 class Particle {
-  constructor(x, y, size, color, speedX, speedY) {
+  constructor(x, y, size, baseColor, speedX, speedY, layer) {
     this.x = x
     this.y = y
     this.baseX = x
     this.baseY = y
     this.size = size
-    this.color = color
+    this.baseSize = size
+    this.baseColor = baseColor
+    this.color = baseColor
     this.speedX = speedX
     this.speedY = speedY
     this.density = (Math.random() * 30) + 1
+    this.layer = layer // 0 = far/dim, 1 = mid, 2 = near/bright
+    this.alpha = layer === 0 ? 0.3 : layer === 1 ? 0.6 : 0.9
+    this.baseAlpha = this.alpha
   }
 
   draw() {
     ctx.beginPath()
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
     ctx.fillStyle = this.color
+    ctx.globalAlpha = this.alpha
     ctx.fill()
+    ctx.globalAlpha = 1
   }
 
   update() {
-    // Normal floating movement
-    this.x += this.speedX
-    this.y += this.speedY
+    this.x += this.speedX * (0.5 + this.layer * 0.3)
+    this.y += this.speedY * (0.5 + this.layer * 0.3)
 
-    // Bounce off edges
     if (this.x < 0 || this.x > canvas.value.width) this.speedX = -this.speedX
     if (this.y < 0 || this.y > canvas.value.height) this.speedY = -this.speedY
 
-    // Mouse interaction
     if (mouse.x != null && mouse.y != null) {
       const dx = mouse.x - this.x
       const dy = mouse.y - this.y
       const distance = Math.sqrt(dx * dx + dy * dy)
-      
-      const forceDirectionX = dx / distance
-      const forceDirectionY = dy / distance
-      
-      const maxDistance = mouse.radius
-      const force = (maxDistance - distance) / maxDistance
-
-      const directionX = forceDirectionX * force * this.density
-      const directionY = forceDirectionY * force * this.density
 
       if (distance < mouse.radius) {
-        this.x -= directionX
-        this.y -= directionY
+        const force = (mouse.radius - distance) / mouse.radius
+        const forceDirectionX = dx / distance
+        const forceDirectionY = dy / distance
+
+        this.x -= forceDirectionX * force * this.density * 0.6
+        this.y -= forceDirectionY * force * this.density * 0.6
+
+        // Glow up near cursor
+        this.size = this.baseSize + force * 2
+        this.alpha = Math.min(1, this.baseAlpha + force * 0.5)
+        this.color = `rgba(162, 155, 254, ${0.6 + force * 0.4})`
+      } else {
+        this.size += (this.baseSize - this.size) * 0.05
+        this.alpha += (this.baseAlpha - this.alpha) * 0.05
+        this.color = this.baseColor
       }
+    } else {
+      this.size += (this.baseSize - this.size) * 0.05
+      this.alpha += (this.baseAlpha - this.alpha) * 0.05
+      this.color = this.baseColor
     }
 
     this.draw()
@@ -70,29 +84,78 @@ class Particle {
 
 const init = () => {
   particles = []
-  const numberOfParticles = (canvas.value.width * canvas.value.height) / 9000
+  const area = canvas.value.width * canvas.value.height
+  const numberOfParticles = area / 7000
+
   for (let i = 0; i < numberOfParticles; i++) {
-    const size = (Math.random() * 2) + 0.5
-    const x = (Math.random() * (canvas.value.width - size * 2) + size)
-    const y = (Math.random() * (canvas.value.height - size * 2) + size)
-    const speedX = (Math.random() * 0.8) - 0.4
-    const speedY = (Math.random() * 0.8) - 0.4
-    const color = Math.random() > 0.5 ? 'rgba(99, 102, 241, 0.8)' : 'rgba(236, 72, 153, 0.8)'
-    
-    particles.push(new Particle(x, y, size, color, speedX, speedY))
+    const layer = Math.random() < 0.3 ? 0 : Math.random() < 0.6 ? 1 : 2
+    const size = layer === 0 ? Math.random() * 1 + 0.3
+              : layer === 1 ? Math.random() * 1.5 + 0.8
+              : Math.random() * 2.5 + 1.2
+
+    const x = Math.random() * canvas.value.width
+    const y = Math.random() * canvas.value.height
+    const speedX = (Math.random() * 0.6) - 0.3
+    const speedY = (Math.random() * 0.6) - 0.3
+
+    const colors = [
+      'rgba(108, 92, 231, 0.8)',
+      'rgba(162, 155, 254, 0.7)',
+      'rgba(253, 121, 168, 0.6)',
+      'rgba(0, 206, 201, 0.5)',
+    ]
+    const color = colors[Math.floor(Math.random() * colors.length)]
+
+    particles.push(new Particle(x, y, size, color, speedX, speedY, layer))
+  }
+}
+
+const drawCursorGlow = () => {
+  if (mouse.x == null || mouse.y == null) return
+
+  // Main glow
+  const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 200)
+  gradient.addColorStop(0, 'rgba(108, 92, 231, 0.12)')
+  gradient.addColorStop(0.4, 'rgba(108, 92, 231, 0.05)')
+  gradient.addColorStop(1, 'transparent')
+  ctx.fillStyle = gradient
+  ctx.fillRect(mouse.x - 200, mouse.y - 200, 400, 400)
+
+  // Trail
+  for (let i = 0; i < trail.length; i++) {
+    const t = trail[i]
+    const age = 1 - (i / trail.length)
+    const r = 30 * age
+    const tGrad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, r)
+    tGrad.addColorStop(0, `rgba(162, 155, 254, ${0.08 * age})`)
+    tGrad.addColorStop(1, 'transparent')
+    ctx.fillStyle = tGrad
+    ctx.fillRect(t.x - r, t.y - r, r * 2, r * 2)
   }
 }
 
 const connect = () => {
   for (let a = 0; a < particles.length; a++) {
-    for (let b = a; b < particles.length; b++) {
+    for (let b = a + 1; b < particles.length; b++) {
       const dx = particles[a].x - particles[b].x
       const dy = particles[a].y - particles[b].y
       const distance = dx * dx + dy * dy
-      if (distance < (canvas.value.width / 7) * (canvas.value.height / 7)) {
-        let opacityValue = 1 - (distance / 10000)
-        ctx.strokeStyle = `rgba(140, 150, 255, ${opacityValue * 0.15})`
-        ctx.lineWidth = 1
+      const maxDist = (canvas.value.width / 8) * (canvas.value.height / 8)
+      if (distance < maxDist) {
+        let opacity = 1 - (distance / maxDist)
+
+        // Brighter connections near cursor
+        if (mouse.x != null && mouse.y != null) {
+          const midX = (particles[a].x + particles[b].x) / 2
+          const midY = (particles[a].y + particles[b].y) / 2
+          const cursorDist = Math.sqrt((mouse.x - midX) ** 2 + (mouse.y - midY) ** 2)
+          if (cursorDist < mouse.radius) {
+            opacity *= 1 + (1 - cursorDist / mouse.radius) * 2
+          }
+        }
+
+        ctx.strokeStyle = `rgba(140, 150, 255, ${opacity * 0.12})`
+        ctx.lineWidth = 0.6
         ctx.beginPath()
         ctx.moveTo(particles[a].x, particles[a].y)
         ctx.lineTo(particles[b].x, particles[b].y)
@@ -105,6 +168,8 @@ const connect = () => {
 const animate = () => {
   animationFrameId = requestAnimationFrame(animate)
   ctx.clearRect(0, 0, canvas.value.width, canvas.value.height)
+
+  drawCursorGlow()
 
   for (let i = 0; i < particles.length; i++) {
     particles[i].update()
@@ -122,11 +187,15 @@ const handleMouseMove = (event) => {
   const rect = canvas.value.getBoundingClientRect()
   mouse.x = event.clientX - rect.left
   mouse.y = event.clientY - rect.top
+
+  trail.unshift({ x: mouse.x, y: mouse.y })
+  if (trail.length > MAX_TRAIL) trail.pop()
 }
 
 const handleMouseLeave = () => {
   mouse.x = null
   mouse.y = null
+  trail.length = 0
 }
 
 onMounted(() => {
@@ -172,3 +241,4 @@ canvas {
   left: 0;
 }
 </style>
+

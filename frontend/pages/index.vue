@@ -1,36 +1,43 @@
 <template>
   <div>
     <!-- Hero Section -->
-    <section class="hero">
+    <section class="hero" ref="heroSection" @mousemove="onHeroMouseMove" @mouseleave="onHeroMouseLeave">
       <div class="hero__bg">
         <InteractiveHero />
       </div>
       <div class="container hero__content">
-        <div class="hero__badge reveal">🚀 Команда профессионалов</div>
-        <h1 class="hero__title">
+        <div class="hero__badge reveal" :style="parallaxStyle(0.02)">
+          <span class="hero__badge-border"></span>
+          <span class="hero__badge-dot"></span>
+          Команда профессионалов
+        </div>
+        <h1 class="hero__title" :style="parallaxStyle(0.015)">
           Превращаем идеи <br />
           в <span class="text-gradient typewriter-word">{{ typedText }}<span class="typewriter-cursor"></span></span>
         </h1>
-        <p class="hero__subtitle">
+        <p class="hero__subtitle" :style="parallaxStyle(0.01)">
           Веб-разработка, дизайн и IT-консалтинг.
           Полный цикл: от идеи до запуска.
         </p>
-        <div class="hero__actions">
+        <div class="hero__actions" :style="parallaxStyle(0.008)">
           <NuxtLink to="/portfolio" class="btn btn-primary" ref="btnPortfolio">Наши работы</NuxtLink>
           <NuxtLink to="/services" class="btn btn-outline" ref="btnServices">Услуги</NuxtLink>
         </div>
 
-        <div class="hero__stats">
+        <div class="hero__stats" :style="parallaxStyle(0.005)">
           <div class="hero__stat" ref="stat1">
             <div class="hero__stat-value">{{ countProjects }}</div>
+            <div class="hero__stat-glow"></div>
             <div class="hero__stat-label">Проектов</div>
           </div>
           <div class="hero__stat" ref="stat2">
             <div class="hero__stat-value">{{ countYears }}</div>
+            <div class="hero__stat-glow"></div>
             <div class="hero__stat-label">Лет опыта</div>
           </div>
           <div class="hero__stat" ref="stat3">
             <div class="hero__stat-value">{{ countClients }}</div>
+            <div class="hero__stat-glow"></div>
             <div class="hero__stat-label">Довольных клиентов</div>
           </div>
         </div>
@@ -282,6 +289,27 @@ useHead({
 // ─── Scroll Reveal ────────────────────────────────────
 useScrollReveal()
 
+// ─── Hero Parallax ────────────────────────────────────
+const heroSection = ref(null)
+const heroMouse = reactive({ x: 0, y: 0 })
+
+const onHeroMouseMove = (e) => {
+  if (window.innerWidth < 768) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  heroMouse.x = e.clientX - rect.left - rect.width / 2
+  heroMouse.y = e.clientY - rect.top - rect.height / 2
+}
+
+const onHeroMouseLeave = () => {
+  heroMouse.x = 0
+  heroMouse.y = 0
+}
+
+const parallaxStyle = (strength) => ({
+  transform: `translate(${heroMouse.x * strength}px, ${heroMouse.y * strength}px)`,
+  transition: heroMouse.x === 0 && heroMouse.y === 0 ? 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)' : 'transform 0.15s ease-out',
+})
+
 // ─── Typewriter Effect ────────────────────────────────
 const { displayText: typedText } = useTypewriter(
   ['цифровые продукты', 'веб-приложения', 'мобильные решения', 'CRM-системы', 'стартапы'],
@@ -477,15 +505,84 @@ onMounted(() => {
 }
 
 .hero__badge {
-  display: inline-block;
-  padding: 0.4rem 1rem;
-  background: var(--c-bg-glass);
-  border: 1px solid var(--c-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.4rem 0.5rem 1rem;
+  background: rgba(10, 10, 15, 0.7);
+  border: none;
   border-radius: var(--radius-full);
   font-size: 0.85rem;
-  color: var(--c-text-secondary);
+  font-weight: 500;
+  color: var(--c-text-primary);
   margin-bottom: var(--space-xl);
-  animation: fadeIn 0.6s var(--ease-out);
+  position: relative;
+  overflow: hidden;
+  animation: badgeEntrance 1s var(--ease-spring) both;
+  backdrop-filter: blur(12px);
+  letter-spacing: 0.02em;
+}
+
+.hero__badge-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--badge-angle, 0deg),
+    transparent 0%,
+    var(--c-accent) 10%,
+    var(--c-accent-light) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(253, 121, 168, 0.6) 70%,
+    var(--c-accent) 85%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rotateBadgeBorder 4s linear infinite;
+  pointer-events: none;
+}
+
+@property --badge-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rotateBadgeBorder {
+  to { --badge-angle: 360deg; }
+}
+
+.hero__badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00cec9;
+  box-shadow: 0 0 8px rgba(0, 206, 201, 0.6), 0 0 20px rgba(0, 206, 201, 0.3);
+  animation: pulseDot 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(0, 206, 201, 0.6), 0 0 20px rgba(0, 206, 201, 0.3); }
+  50% { opacity: 0.5; box-shadow: 0 0 4px rgba(0, 206, 201, 0.3), 0 0 10px rgba(0, 206, 201, 0.1); }
+}
+
+@keyframes badgeEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 .hero__title {
@@ -527,6 +624,7 @@ onMounted(() => {
 
 .hero__stat {
   text-align: center;
+  position: relative;
 }
 
 .hero__stat-value {
@@ -536,6 +634,21 @@ onMounted(() => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.hero__stat-glow {
+  width: 40px;
+  height: 3px;
+  margin: var(--space-xs) auto;
+  border-radius: var(--radius-full);
+  background: var(--c-gradient-1);
+  box-shadow: 0 0 12px var(--c-accent-glow), 0 0 30px rgba(108, 92, 231, 0.15);
+  animation: statGlowPulse 3s ease-in-out infinite;
+}
+
+@keyframes statGlowPulse {
+  0%, 100% { opacity: 0.6; width: 40px; }
+  50% { opacity: 1; width: 55px; }
 }
 
 .hero__stat-label {
