@@ -52,6 +52,8 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 app.include_router(push.router, prefix="/api/push", tags=["Push"])
 

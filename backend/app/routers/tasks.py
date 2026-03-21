@@ -10,9 +10,11 @@ from ..deps import get_current_active_user, require_role
 
 router = APIRouter()
 
+from typing import Optional
+
 @router.get("/", response_model=list[TaskResponse])
 async def get_tasks(
-    project_id: int = None,
+    project_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_active_user)
 ):

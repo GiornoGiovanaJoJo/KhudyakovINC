@@ -60,4 +60,19 @@ export const api = {
   // Push
   registerPushToken: (token, platform) =>
     request('POST', '/api/push/register', { token, platform }),
+
+  // Users
+  getMe: () => request('GET', '/api/users/me'),
+
+  // Agile Projects
+  getProjects: () => request('GET', '/api/projects/'),
+  getProject: (id) => request('GET', `/api/projects/${id}`),
+
+  // Tasks
+  getTasks: (projectId) => request('GET', `/api/tasks/?project_id=${projectId}`),
+  updateTask: (id, data) => request('PATCH', `/api/tasks/${id}`, data),
+
+  // AI Manager
+  evaluateOrder: (text) => request('POST', '/api/ai/evaluate', { text }),
+  askAiQuestion: (text) => request('POST', '/api/ai/ask', { text })
 }

@@ -4,6 +4,9 @@ import LeadDetail from './views/LeadDetail.vue'
 import DashboardView from './views/DashboardView.vue'
 import SearchView from './views/SearchView.vue'
 import SettingsView from './views/SettingsView.vue'
+import ProjectsView from './views/ProjectsView.vue'
+import ProjectDetail from './views/ProjectDetail.vue'
+import AiManagerView from './views/AiManagerView.vue'
 
 export const routes = [
   {
@@ -40,5 +43,23 @@ export const routes = [
     name: 'LeadDetail',
     component: LeadDetail,
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/projects',
+    name: 'Projects',
+    component: ProjectsView,
+    meta: { requiresAuth: true, tab: 'projects' },
+  },
+  {
+    path: '/project/:id',
+    name: 'ProjectDetail',
+    component: ProjectDetail,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/ai',
+    name: 'AiManager',
+    component: AiManagerView,
+    meta: { requiresAuth: true, tab: 'ai' },
   },
 ]

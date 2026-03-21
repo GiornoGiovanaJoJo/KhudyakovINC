@@ -62,12 +62,12 @@
       </div>
 
       <!-- Agile Projects & Kanban Tab -->
-      <div v-show="activeTab === 'projects'" class="admin-section">
+      <div v-if="activeTab === 'projects'" class="admin-section">
         <AdminProjectsTab :token="token" :userRole="userRole" :userId="userId" />
       </div>
 
       <!-- CRM Users Tab -->
-      <div v-show="activeTab === 'users'" class="admin-section">
+      <div v-if="activeTab === 'users'" class="admin-section">
         <AdminUsersTab :token="token" />
       </div>
 

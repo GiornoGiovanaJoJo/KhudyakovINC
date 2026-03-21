@@ -8,18 +8,18 @@
 
     <!-- Bottom Tab Bar -->
     <nav v-if="showTabs" class="tab-bar">
-      <router-link to="/" class="tab-item" :class="{ active: currentTab === 'dashboard' }">
-        <span class="tab-icon">📊</span>
-        <span class="tab-label">Дашборд</span>
+      <router-link v-if="['admin', 'manager'].includes(userRole)" to="/ai" class="tab-item" :class="{ active: currentTab === 'ai' }">
+        <span class="tab-icon">🤖</span>
+        <span class="tab-label">AI</span>
       </router-link>
       <router-link to="/leads" class="tab-item" :class="{ active: currentTab === 'leads' }">
         <span class="tab-icon">📋</span>
-        <span class="tab-label">Лиды</span>
+        <span class="tab-label">CRM</span>
         <span v-if="newCount > 0" class="tab-badge">{{ newCount }}</span>
       </router-link>
-      <router-link to="/search" class="tab-item" :class="{ active: currentTab === 'search' }">
-        <span class="tab-icon">🔍</span>
-        <span class="tab-label">Поиск</span>
+      <router-link to="/projects" class="tab-item" :class="{ active: currentTab === 'projects' }">
+        <span class="tab-icon">🗂️</span>
+        <span class="tab-label">Проекты</span>
       </router-link>
       <router-link to="/settings" class="tab-item" :class="{ active: currentTab === 'settings' }">
         <span class="tab-icon">⚙️</span>
@@ -37,6 +37,7 @@ import { api } from './api.js'
 
 const route = useRoute()
 const newCount = ref(0)
+const userRole = ref(authStore.userType === 'admin' ? 'admin' : 'employee')
 
 const showTabs = computed(() => {
   return authStore.isAuthenticated && route.path !== '/login'
@@ -52,9 +53,30 @@ async function fetchBadge() {
   } catch (e) { /* ignore */ }
 }
 
-watch(() => route.path, fetchBadge)
-onMounted(() => {
+async function fetchRole() {
+  if (!authStore.isAuthenticated) return
+  try {
+    const me = await api.getMe()
+    userRole.value = me.role
+  } catch (e) {
+    if (e.message && e.message.includes('superadmin')) {
+      userRole.value = 'admin'
+    }
+  }
+}
+
+watch(() => route.path, () => {
   fetchBadge()
-  setInterval(fetchBadge, 30000)
+  if (authStore.isAuthenticated && (userRole.value === 'employee' || !userRole.value)) {
+    fetchRole()
+  }
+})
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+     fetchRole()
+     fetchBadge()
+     setInterval(fetchBadge, 30000)
+  }
 })
 </script>
