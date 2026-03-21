@@ -34,58 +34,85 @@ CHATS_FILE = "chats.json"
 # Priority: PROXY_URL env var first, then fallback list
 PROXY_URL_ENV = os.getenv("PROXY_URL", "")
 
-FALLBACK_PROXIES = [
-    "socks5://116.202.100.234:37435",
-    "socks5://173.212.237.43:43648",
-    "socks5://188.40.158.211:1088",
-    "socks5://65.108.203.36:18080",
-    "socks5://46.8.60.2:1080",
-    "socks5://193.233.254.77:1080",
-    "socks5://84.22.61.69:1080",
-    "socks5://198.27.82.161:9050",
-    "socks5://164.90.138.101:1080",
-    "socks5://89.251.26.233:7890",
+# URLs to fetch fresh SOCKS5 proxy lists
+PROXY_LIST_URLS = [
+    "https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks5.txt",
+    "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
 ]
 
-def _build_proxy_list():
-    """Build ordered proxy list: env var first, then fallbacks."""
-    proxies = []
-    if PROXY_URL_ENV:
-        proxies.append(PROXY_URL_ENV)
-    for p in FALLBACK_PROXIES:
-        if p not in proxies:
-            proxies.append(p)
-    return proxies
+
+async def _fetch_fresh_proxies() -> list[str]:
+    """Download fresh SOCKS5 proxy lists from public sources."""
+    all_proxies = []
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for url in PROXY_LIST_URLS:
+            try:
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    lines = resp.text.strip().split("\n")
+                    for line in lines:
+                        line = line.strip()
+                        if line and ":" in line:
+                            all_proxies.append(f"socks5://{line}")
+                    logger.info(f"[PROXY] Fetched {len(lines)} proxies from {url}")
+            except Exception as e:
+                logger.warning(f"[PROXY] Failed to fetch from {url}: {e}")
+    
+    # Deduplicate
+    return list(dict.fromkeys(all_proxies))
 
 
-async def _test_proxy(proxy_url: str, token: str) -> bool:
-    """Test if a proxy can reach Telegram API by calling getMe."""
+async def _test_proxy(proxy_url: str, token: str) -> str | None:
+    """Test if a proxy can reach Telegram API. Returns proxy_url if works, None otherwise."""
+    test_bot = None
     try:
         session = AiohttpSession(proxy=proxy_url)
         test_bot = Bot(token=token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-        me = await asyncio.wait_for(test_bot.get_me(), timeout=10)
+        me = await asyncio.wait_for(test_bot.get_me(), timeout=8)
         await test_bot.session.close()
-        logger.info(f"[PROXY] ✅ Proxy {proxy_url} works! Bot: @{me.username}")
-        return True
-    except Exception as e:
-        logger.warning(f"[PROXY] ❌ Proxy {proxy_url} failed: {e}")
+        logger.info(f"[PROXY] ✅ {proxy_url} works! Bot: @{me.username}")
+        return proxy_url
+    except Exception:
         try:
-            await test_bot.session.close()
+            if test_bot:
+                await test_bot.session.close()
         except:
             pass
-        return False
+        return None
 
 
 async def _find_working_proxy(token: str) -> str | None:
-    """Try all proxies and return the first working one."""
-    proxy_list = _build_proxy_list()
-    logger.info(f"[PROXY] Testing {len(proxy_list)} proxies...")
+    """Fetch fresh proxies and test them in concurrent batches."""
     
-    for proxy_url in proxy_list:
-        if await _test_proxy(proxy_url, token):
-            return proxy_url
+    # 1. Try env var proxy first
+    if PROXY_URL_ENV:
+        logger.info(f"[PROXY] Testing env proxy: {PROXY_URL_ENV}")
+        if await _test_proxy(PROXY_URL_ENV, token):
+            return PROXY_URL_ENV
     
-    logger.error("[PROXY] No working proxy found!")
+    # 2. Fetch fresh proxy lists
+    proxies = await _fetch_fresh_proxies()
+    if not proxies:
+        logger.error("[PROXY] Could not fetch any proxy lists!")
+        return None
+    
+    logger.info(f"[PROXY] Testing {len(proxies)} fresh proxies in batches of 10...")
+    
+    # 3. Test in batches of 10 concurrently (much faster)
+    BATCH_SIZE = 10
+    for i in range(0, min(len(proxies), 200), BATCH_SIZE):  # Test max 200
+        batch = proxies[i:i + BATCH_SIZE]
+        tasks = [_test_proxy(p, token) for p in batch]
+        results = await asyncio.gather(*tasks)
+        
+        # Return the first working proxy from this batch
+        for result in results:
+            if result is not None:
+                return result
+        
+        logger.info(f"[PROXY] Batch {i//BATCH_SIZE + 1} done, no working proxy yet...")
+    
+    logger.error("[PROXY] No working proxy found in any batch!")
     return None
 
 
