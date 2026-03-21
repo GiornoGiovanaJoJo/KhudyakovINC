@@ -1,5 +1,5 @@
 <template>
-  <div class="interactive-hero" ref="container" @mousedown="onDown" @mouseup="onUp" @touchstart="onDown" @touchend="onUp">
+  <div class="interactive-hero" ref="container" @mousedown="onDown" @mouseup="onUp" @touchstart.passive="onDown" @touchend.passive="onUp">
     <canvas ref="canvas"></canvas>
     <!-- Overlay for text readability -->
     <div class="hero-overlay"></div>
@@ -313,7 +313,7 @@ const animate = () => {
   meteorites.forEach(m => m.update())
   
   // Update Black Hole position (Eased follow)
-  const targetX = mouse.x ?? w / 2
+  let targetX = mouse.x ?? w / 2
   let targetY = mouse.y ?? h / 2
   
   // On mobile or when mouse left, slowly drift around center
