@@ -1,7 +1,7 @@
 <template>
   <div class="interactive-hero" ref="container" @mousedown="onDown" @mouseup="onUp" @touchstart.passive="onDown" @touchend.passive="onUp">
     <canvas ref="canvas"></canvas>
-    <!-- Overlay for text readability -->
+    <!-- Dark overlay to ensure text remains readable over the bright effects -->
     <div class="hero-overlay"></div>
   </div>
 </template>
@@ -17,18 +17,20 @@ let isVisible = true
 let w, h
 
 // Palette
-const C_BG = '#05020a'
-const COLORS = ['#00d2ff', '#7a28cb', '#ff007f', '#a29bfe']
+const C_BG = '#030108' // Deep dark space
+const COLORS = ['#00d2ff', '#7a28cb', '#ff007f', '#a29bfe', '#00cec9', '#fd79a8']
 
 const mouse = { x: null, y: null, isDown: false }
-const blackHole = { x: null, y: null, time: 0, shockwave: 0 }
+const blackHole = { x: null, y: null, time: 0, gravityActive: false }
 
-// Environment Arrays
-let backgroundStars = []
+// Space Entities
+let stars = []
 let nebulas = []
-let spiralDust = []
+let galacticDust = []
 let comets = []
 let meteorites = []
+let shockwaves = []
+let explosions = []
 
 // ─── Utility ───
 const randomColor = () => COLORS[Math.floor(Math.random() * COLORS.length)]
@@ -39,22 +41,27 @@ class Nebula {
   constructor() {
     this.x = Math.random() * window.innerWidth
     this.y = Math.random() * window.innerHeight
-    this.radius = Math.random() * 400 + 300
+    this.radius = Math.random() * 600 + 400
     this.color = randomColor()
-    this.vx = (Math.random() - 0.5) * 0.2
-    this.vy = (Math.random() - 0.5) * 0.2
+    this.vx = (Math.random() - 0.5) * 0.1
+    this.vy = (Math.random() - 0.5) * 0.1
   }
   update() {
     this.x += this.vx
     this.y += this.vy
+    
+    // Wrap around screen
     if (this.x < -this.radius) this.x = w + this.radius
     if (this.x > w + this.radius) this.x = -this.radius
     if (this.y < -this.radius) this.y = h + this.radius
     if (this.y > h + this.radius) this.y = -this.radius
 
     const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius)
-    grad.addColorStop(0, this.color + '15') // ~8% opacity hex
+    // Very subtle, rich deep space clouds
+    grad.addColorStop(0, this.color + '0C') // ~5% opacity
     grad.addColorStop(1, this.color + '00')
+    
+    ctx.globalCompositeOperation = 'screen'
     ctx.fillStyle = grad
     ctx.beginPath()
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
@@ -62,12 +69,12 @@ class Nebula {
   }
 }
 
-class StaticStar {
+class Star {
   constructor() {
     this.x = Math.random() * window.innerWidth
     this.y = Math.random() * window.innerHeight
-    this.size = Math.random() * 1.2 + 0.2
-    this.baseAlpha = Math.random() * 0.5 + 0.1
+    this.size = Math.random() * 1.5 + 0.2
+    this.baseAlpha = Math.random() * 0.4 + 0.1
     this.blinkAngle = Math.random() * Math.PI * 2
     this.blinkSpeed = Math.random() * 0.02 + 0.005
     this.color = Math.random() > 0.8 ? randomColor() : '#ffffff'
@@ -75,50 +82,126 @@ class StaticStar {
   update() {
     this.blinkAngle += this.blinkSpeed
     const alpha = this.baseAlpha + Math.sin(this.blinkAngle) * 0.3
-    if (alpha > 0) {
-      ctx.fillStyle = this.color
-      ctx.globalAlpha = Math.min(1, alpha)
-      ctx.beginPath()
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = 1.0
+    if (alpha <= 0) return
+    
+    ctx.globalCompositeOperation = 'screen'
+    ctx.fillStyle = this.color
+    ctx.globalAlpha = Math.min(1, alpha)
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1.0
+  }
+}
+
+class GalacticDust {
+  constructor() {
+    this.reset()
+  }
+  reset() {
+    // Distribute around screen, occasionally forming clusters
+    this.x = Math.random() * window.innerWidth
+    this.y = Math.random() * window.innerHeight
+    this.size = Math.random() * 2 + 0.5
+    this.color = randomColor()
+    this.vx = (Math.random() - 0.5) * 0.5
+    this.vy = (Math.random() - 0.5) * 0.5
+    this.orbitAngle = Math.atan2(this.y - window.innerHeight/2, this.x - window.innerWidth/2)
+  }
+  update(bhX, bhY) {
+    const dx = bhX - this.x
+    const dy = bhY - this.y
+    const dist = Math.sqrt(dx*dx + dy*dy)
+    
+    if (mouse.isDown) {
+      // SUCKED INTO BLACK HOLE
+      const pull = Math.max(0.1, 2000 / (dist * dist))
+      this.vx += (dx / dist) * pull * 2
+      this.vy += (dy / dist) * pull * 2
+      // Add spiral effect
+      this.vx += (dy / dist) * 2
+      this.vy -= (dx / dist) * 2
+    } else if (dist < 500 && mouse.x != null) {
+      // Gentle attraction to black hole
+      this.vx += (dx / dist) * 0.02
+      this.vy += (dy / dist) * 0.02
+    } else {
+      // Natural slow drift
+      const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy)
+      if (speed > 1) {
+        this.vx *= 0.95
+        this.vy *= 0.95
+      }
+    }
+
+    this.x += this.vx
+    this.y += this.vy
+
+    // Draw
+    ctx.globalCompositeOperation = 'screen'
+    ctx.fillStyle = this.color
+    
+    // Fade out as it gets super close to singularity to simulate falling past event horizon
+    const alpha = dist < 40 ? Math.max(0, dist / 40) : 1
+    ctx.globalAlpha = alpha
+    
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1.0
+
+    // Respawn if sucked in completely or drifted way off screen
+    if (dist < 10 || this.x < -100 || this.x > w + 100 || this.y < -100 || this.y > h + 100) {
+      this.reset()
+      // If sucked in, spawn at edge to maintain galaxy density
+      if (dist < 10) {
+        const angle = Math.random() * Math.PI * 2
+        this.x = bhX + Math.cos(angle) * (w > h ? w : h) // Spawn far away
+        this.y = bhY + Math.sin(angle) * (w > h ? w : h)
+      }
     }
   }
 }
 
-class SpiralDust {
-  constructor() {
-    this.angle = Math.random() * Math.PI * 2
-    this.baseRadius = Math.random() * (window.innerWidth > 768 ? 600 : 300) + 40
-    this.radius = this.baseRadius
-    // Kepler-like speed: slower further out
-    this.speed = (Math.random() * 2 + 1) / Math.sqrt(this.radius) * (Math.random() > 0.2 ? 1 : -1)
-    this.size = Math.random() * 1.5 + 0.5
-    this.color = randomColor()
-    this.zScale = Math.random() * 0.4 + 0.2 // for an elliptical orbit
+class Shockwave {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    this.radius = 10
+    this.life = 1.0
+    this.speed = 40
   }
-  update(bhX, bhY) {
-    this.angle += this.speed * 0.05
-    
-    // Attraction logic
-    if (mouse.isDown && this.radius > 35) {
-      this.radius -= (this.radius - 35) * 0.02
-    } else {
-      this.radius += (this.baseRadius - this.radius) * 0.01
-    }
+  update() {
+    this.radius += this.speed
+    this.speed *= 0.95 // Exponential slowdown
+    this.life -= 0.015
 
-    const x = bhX + Math.cos(this.angle) * this.radius
-    const y = bhY + Math.sin(this.angle) * this.radius * 0.35 // Squish Y for 3D disk effect
-
-    // Fade out based on distance from center to blend seamlessly
-    const distRatio = Math.max(0, 1 - (this.radius / this.baseRadius))
+    ctx.globalCompositeOperation = 'screen'
+    ctx.save()
     
-    ctx.fillStyle = this.color
-    ctx.globalAlpha = distRatio * 0.8
+    // Outer expanding ring (Cyan/White)
+    ctx.strokeStyle = `rgba(0, 210, 255, ${Math.max(0, this.life)})`
+    ctx.lineWidth = 10 * this.life
     ctx.beginPath()
-    ctx.arc(x, y, this.size, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = 1.0
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2)
+    ctx.stroke()
+    
+    // Inner secondary ring (Pink)
+    ctx.strokeStyle = `rgba(255, 0, 127, ${Math.max(0, this.life * 0.7)})`
+    ctx.lineWidth = 5 * this.life
+    ctx.beginPath()
+    ctx.arc(this.x, this.y, this.radius * 0.8, 0, Math.PI*2)
+    ctx.stroke()
+
+    // Central flash
+    const flashGrad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius)
+    flashGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.max(0, this.life * 0.8)})`)
+    flashGrad.addColorStop(0.3, `rgba(255, 0, 127, ${Math.max(0, this.life * 0.4)})`)
+    flashGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    ctx.fillStyle = flashGrad
+    ctx.fillRect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2)
+
+    ctx.restore()
   }
 }
 
@@ -129,10 +212,10 @@ class Comet {
   }
   reset() {
     this.x = Math.random() * w
-    this.y = -50
-    this.length = Math.random() * 150 + 60
-    this.speed = Math.random() * 12 + 8
-    this.angle = (Math.PI / 4) + (Math.random() * 0.4 - 0.2)
+    this.y = -100
+    this.length = Math.random() * 200 + 100
+    this.speed = Math.random() * 18 + 12
+    this.angle = (Math.PI / 4) + (Math.random() * 0.3 - 0.15)
     this.active = true
     this.color = randomColor()
   }
@@ -150,17 +233,19 @@ class Comet {
 
     const grad = ctx.createLinearGradient(this.x, this.y, tailX, tailY)
     grad.addColorStop(0, '#ffffff')
-    grad.addColorStop(0.2, this.color)
+    grad.addColorStop(0.1, this.color)
     grad.addColorStop(1, this.color + '00')
 
+    ctx.globalCompositeOperation = 'screen'
     ctx.strokeStyle = grad
-    ctx.lineWidth = 2
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
     ctx.beginPath()
     ctx.moveTo(this.x, this.y)
     ctx.lineTo(tailX, tailY)
     ctx.stroke()
 
-    if (this.x > w + 200 || this.y > h + 200 || this.x < -200) {
+    if (this.x > w + 300 || this.y > h + 300 || this.x < -300) {
       this.active = false
     }
   }
@@ -171,33 +256,47 @@ class Meteorite {
     this.reset()
   }
   reset() {
-    this.x = Math.random() > 0.5 ? -50 : w + 50
+    this.x = Math.random() > 0.5 ? -100 : w + 100
     this.y = Math.random() * h
-    this.vx = (Math.random() * 1 + 0.2) * (this.x < 0 ? 1 : -1)
-    this.vy = Math.random() * 1 - 0.5
-    this.size = Math.random() * 3 + 1
+    this.vx = (Math.random() * 2 + 0.5) * (this.x < 0 ? 1 : -1)
+    this.vy = Math.random() * 2 - 1
+    this.size = Math.random() * 4 + 2
     this.rotation = 0
-    this.rotSpeed = (Math.random() - 0.5) * 0.1
-    // Generate a simple irregular polygon
+    this.rotSpeed = (Math.random() - 0.5) * 0.05
+    
     this.points = []
-    const numPoints = Math.floor(Math.random() * 3) + 4
+    const numPoints = Math.floor(Math.random() * 4) + 5
     for(let i=0; i<numPoints; i++){
       const a = (i / numPoints) * Math.PI * 2
       const r = this.size + Math.random() * this.size
       this.points.push({ x: Math.cos(a)*r, y: Math.sin(a)*r })
     }
   }
-  update() {
+  update(bhX, bhY) {
+    // Sucked into black hole if mousedown
+    if (mouse.isDown) {
+      const dx = bhX - this.x
+      const dy = bhY - this.y
+      const dist = Math.sqrt(dx*dx + dy*dy)
+      const pull = Math.max(0, 1000 / (dist * dist))
+      this.vx += (dx / dist) * pull
+      this.vy += (dy / dist) * pull
+    }
+
     this.x += this.vx
     this.y += this.vy
     this.rotation += this.rotSpeed
 
+    ctx.globalCompositeOperation = 'source-over'
     ctx.save()
     ctx.translate(this.x, this.y)
     ctx.rotate(this.rotation)
-    ctx.fillStyle = '#1e1b2e' // Dark rocky color
-    ctx.strokeStyle = '#3d345b'
-    ctx.lineWidth = 1
+    ctx.fillStyle = '#110f1a' // Deep dark rock
+    ctx.strokeStyle = '#3d345b' // Purple glowing edge
+    ctx.lineWidth = 1.5
+    ctx.shadowBlur = 10
+    ctx.shadowColor = '#6c5ce7' // Neon purple drop shadow
+    
     ctx.beginPath()
     ctx.moveTo(this.points[0].x, this.points[0].y)
     for(let i=1; i<this.points.length; i++) {
@@ -208,59 +307,109 @@ class Meteorite {
     ctx.stroke()
     ctx.restore()
 
-    if (this.x < -100 || this.x > w + 100 || this.y < -100 || this.y > h + 100) {
+    if (this.x < -150 || this.x > w + 150 || this.y < -150 || this.y > h + 150) {
       if(Math.random() < 0.005) this.reset()
     }
   }
 }
 
-// ─── Drawing Black Hole ───
-const drawBlackHole = (bx, by) => {
-  blackHole.time += 0.01
-  if (mouse.isDown) blackHole.shockwave = Math.min(blackHole.shockwave + 0.1, 1)
-  else blackHole.shockwave = Math.max(blackHole.shockwave - 0.05, 0)
+// ─── Drawing Interstellar-style Gargantua Black Hole ───
+const drawBlackHole = (x, y) => {
+  blackHole.time += 0.015
+  const r = window.innerWidth > 768 ? 65 : 45 // Event horizon radius
 
   ctx.save()
-  ctx.translate(bx, by)
-
-  // Accretion disk (slanted, rotating)
-  ctx.save()
-  ctx.scale(1, 0.35)
-  ctx.rotate(blackHole.time)
+  ctx.translate(x, y)
   
-  // Outer bright ring
-  const diskGrad = ctx.createRadialGradient(0, 0, 30, 0, 0, 150 + (blackHole.shockwave * 50))
-  diskGrad.addColorStop(0, 'rgba(255, 0, 127, 0.8)') // Bright Pink
-  diskGrad.addColorStop(0.3, 'rgba(122, 40, 203, 0.5)') // Purple
-  diskGrad.addColorStop(0.8, 'rgba(0, 210, 255, 0.1)') // Cyan edge
-  diskGrad.addColorStop(1, 'rgba(0,0,0,0)')
-
-  ctx.fillStyle = diskGrad
-  // Use additive blending for the glow
+  // Gravitational Lensing Halo (The curved ring behind and over the top)
+  ctx.save()
+  ctx.scale(1, 0.45)
+  ctx.translate(0, -r * 1.6) // Shifted up
+  // Slowly wobble the back ring to make it feel alive
+  ctx.rotate(Math.sin(blackHole.time) * 0.1)
+  
+  const backHalo = ctx.createRadialGradient(0, 0, r*0.5, 0, 0, r*4)
+  backHalo.addColorStop(0, 'rgba(255, 255, 255, 0.9)') // White hot core
+  backHalo.addColorStop(0.15, 'rgba(255, 0, 127, 0.7)') // Pink intense
+  backHalo.addColorStop(0.4, 'rgba(122, 40, 203, 0.4)') // Deep purple
+  backHalo.addColorStop(1, 'rgba(0, 0, 0, 0)') // Fade to unseen
+  
   ctx.globalCompositeOperation = 'screen'
+  ctx.fillStyle = backHalo
   ctx.beginPath()
-  ctx.arc(0, 0, 150 + (blackHole.shockwave * 50), 0, Math.PI * 2)
+  ctx.arc(0, 0, r*4.5, 0, Math.PI*2)
   ctx.fill()
-  
-  // Inner hot ring
-  ctx.strokeStyle = `rgba(0, 210, 255, ${0.8 + blackHole.shockwave * 0.2})`
-  ctx.lineWidth = 3 + blackHole.shockwave * 2
-  ctx.beginPath()
-  ctx.arc(0, 0, 42, 0, Math.PI * 2)
-  ctx.stroke()
   ctx.restore()
 
-  // The Singularity (True black void)
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = '#020104'
+  // Full Accretion Disk Glow Background
+  ctx.save()
+  ctx.scale(1, 0.25)
+  ctx.rotate(-blackHole.time * 0.5) // Rotate the gas disk
+  
+  const diskBg = ctx.createRadialGradient(0, 0, r*1.2, 0, 0, r*6)
+  diskBg.addColorStop(0, 'rgba(0, 210, 255, 0.8)') // Cyan inner edge
+  diskBg.addColorStop(0.3, 'rgba(255, 0, 127, 0.5)') // Pink middle
+  diskBg.addColorStop(0.7, 'rgba(122, 40, 203, 0.2)') // Purple outer
+  diskBg.addColorStop(1, 'rgba(0,0,0,0)')
+  
+  ctx.fillStyle = diskBg
   ctx.beginPath()
-  ctx.arc(0, 0, 38, 0, Math.PI * 2)
+  ctx.arc(0, 0, r*6, 0, Math.PI*2)
+  ctx.fill()
+  ctx.restore()
+
+  // Event Horizon (True Pitch Black Void)
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI*2)
+  ctx.fillStyle = '#010002' // Absolute dark
   ctx.fill()
 
-  // Event horizon glow edge
-  ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)'
-  ctx.lineWidth = 1.5
+  // Photon Sphere (Intense glowing edge around the black hole)
+  ctx.lineWidth = 2
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
   ctx.stroke()
+  ctx.lineWidth = 6
+  ctx.strokeStyle = 'rgba(0, 210, 255, 0.4)'
+  ctx.stroke()
+  ctx.lineWidth = 12
+  ctx.strokeStyle = 'rgba(255, 0, 127, 0.15)'
+  ctx.stroke()
+
+  // Foreground Accretion Disk (Passes IN FRONT of the black hole)
+  ctx.save()
+  ctx.globalCompositeOperation = 'screen'
+  ctx.scale(1, 0.25)
+  ctx.rotate(-blackHole.time * 0.5)
+  
+  const frontDisk = ctx.createRadialGradient(0, 0, r*1.2, 0, 0, r*5.5)
+  frontDisk.addColorStop(0, 'rgba(0,0,0,0)')
+  frontDisk.addColorStop(0.15, 'rgba(255, 255, 255, 1)')
+  frontDisk.addColorStop(0.3, 'rgba(0, 210, 255, 0.8)')
+  frontDisk.addColorStop(0.6, 'rgba(122, 40, 203, 0.5)')
+  frontDisk.addColorStop(1, 'rgba(0,0,0,0)')
+  
+  ctx.fillStyle = frontDisk
+  ctx.beginPath()
+  // Draw only the bottom half of the circle so it overlaps the bottom of the black spherical void
+  ctx.arc(0, 0, r*5.5, -0.1, Math.PI + 0.1) 
+  ctx.fill()
+  ctx.restore()
+
+  // Add a subtle suction distortion field if mouse is held down
+  if (mouse.isDown) {
+    ctx.save()
+    ctx.scale(1, 0.25)
+    ctx.rotate(blackHole.time * 2) // Fast spin
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+    ctx.lineWidth = 1
+    for (let i = 0; i < 5; i++) {
+        ctx.beginPath()
+        ctx.arc(0, 0, r*2 + (Math.sin(blackHole.time*5 + i) * 20), 0, Math.PI)
+        ctx.stroke()
+    }
+    ctx.restore()
+  }
 
   ctx.restore()
 }
@@ -280,60 +429,67 @@ const init = () => {
     blackHole.y = h / 2
   }
 
-  backgroundStars = []
+  stars = []
   nebulas = []
-  spiralDust = []
+  galacticDust = []
   comets = []
   meteorites = []
+  shockwaves = []
 
   const isMobile = window.innerWidth <= 768
 
-  for (let i = 0; i < (isMobile ? 100 : 200); i++) backgroundStars.push(new StaticStar())
-  for (let i = 0; i < (isMobile ? 3 : 5); i++) nebulas.push(new Nebula())
-  for (let i = 0; i < (isMobile ? 200 : 400); i++) spiralDust.push(new SpiralDust())
+  for (let i = 0; i < (isMobile ? 120 : 250); i++) stars.push(new Star())
+  for (let i = 0; i < (isMobile ? 4 : 7); i++) nebulas.push(new Nebula())
+  for (let i = 0; i < (isMobile ? 250 : 500); i++) galacticDust.push(new GalacticDust())
   for (let i = 0; i < 4; i++) comets.push(new Comet())
-  for (let i = 0; i < 5; i++) meteorites.push(new Meteorite())
+  for (let i = 0; i < (isMobile ? 4 : 8); i++) meteorites.push(new Meteorite())
 }
 
 const animate = () => {
   if (!isVisible || !canvas.value || !ctx) return
   animationFrameId = requestAnimationFrame(animate)
 
-  // Clear background
+  // Motion blur fading for dark space
   ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = C_BG
+  ctx.fillStyle = 'rgba(3, 1, 8, 0.35)' // Deep space smear
   ctx.fillRect(0, 0, w, h)
 
-  // Draw Deep Space Entities
-  ctx.globalCompositeOperation = 'screen' // Lightens underlying pixels
+  // Draw Nebulas
   nebulas.forEach(n => n.update())
   
-  ctx.globalCompositeOperation = 'source-over'
-  backgroundStars.forEach(s => s.update())
-  meteorites.forEach(m => m.update())
+  // Draw Stars & Meteorites
+  stars.forEach(s => s.update())
+  meteorites.forEach(m => m.update(blackHole.x, blackHole.y))
   
-  // Update Black Hole position (Eased follow)
+  // Update Black Hole target position (smooth follow)
   let targetX = mouse.x ?? w / 2
   let targetY = mouse.y ?? h / 2
   
-  // On mobile or when mouse left, slowly drift around center
+  // If mouse never moved or left bounds, slowly drift center
   if (mouse.x == null) {
-      targetX = (w/2) + Math.sin(Date.now() * 0.0005) * 100
-      targetY = (h/2) + Math.cos(Date.now() * 0.0003) * 50
+      targetX = (w/2) + Math.sin(Date.now() * 0.0004) * 150
+      targetY = (h/2) + Math.cos(Date.now() * 0.0002) * 80
   }
 
-  blackHole.x += (targetX - blackHole.x) * 0.04
-  blackHole.y += (targetY - blackHole.y) * 0.04
+  blackHole.x += (targetX - blackHole.x) * (mouse.isDown ? 0.05 : 0.03)
+  blackHole.y += (targetY - blackHole.y) * (mouse.isDown ? 0.05 : 0.03)
 
-  // Draw Galactic Core / Accretion Dust
-  ctx.globalCompositeOperation = 'screen'
-  spiralDust.forEach(d => d.update(blackHole.x, blackHole.y))
+  // Draw Gargantua Black Hole 
+  drawBlackHole(blackHole.x, blackHole.y)
 
-  // Draw Space Objects
+  // Draw dust getting pulled or orbiting
+  galacticDust.forEach(d => d.update(blackHole.x, blackHole.y))
+
+  // Draw Comets
   comets.forEach(c => c.update())
   
-  // Draw the Singularity overlay
-  drawBlackHole(blackHole.x, blackHole.y)
+  // Draw Supernova Shockwaves
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    shockwaves[i].update()
+    if (shockwaves[i].life <= 0) {
+      shockwaves.splice(i, 1)
+    }
+  }
 }
 
 // ─── Events ───
@@ -370,7 +526,18 @@ const handleMouseLeave = () => {
 }
 
 const onDown = () => { mouse.isDown = true }
-const onUp = () => { mouse.isDown = false }
+const onUp = () => { 
+  if (mouse.isDown) { // Prevent triggering if just mouseup without mousedown recently
+    // Initiate Supernova Shockwave
+    shockwaves.push(new Shockwave(blackHole.x, blackHole.y))
+    // Scatter the dust violently
+    galacticDust.forEach(d => {
+      d.vx += (Math.random() - 0.5) * 50
+      d.vy += (Math.random() - 0.5) * 50
+    })
+  }
+  mouse.isDown = false 
+}
 
 let visibilityObserver = null
 
@@ -420,7 +587,7 @@ onBeforeUnmount(() => {
   height: 100%;
   z-index: 0;
   overflow: hidden;
-  background-color: #05020a;
+  background-color: #030108;
   pointer-events: auto;
   cursor: crosshair;
 }
@@ -434,7 +601,7 @@ canvas {
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(5, 2, 10, 0.6) 100%);
+  background: radial-gradient(circle at center, transparent 0%, rgba(3, 1, 8, 0.7) 100%);
   pointer-events: none;
 }
 </style>
