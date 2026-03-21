@@ -61,6 +61,16 @@
         </div>
       </div>
 
+      <!-- Agile Projects & Kanban Tab -->
+      <div v-show="activeTab === 'projects'" class="admin-section">
+        <AdminProjectsTab :token="token" :userRole="userRole" :userId="userId" />
+      </div>
+
+      <!-- CRM Users Tab -->
+      <div v-show="activeTab === 'users'" class="admin-section">
+        <AdminUsersTab :token="token" />
+      </div>
+
       <!-- Leads Tab -->
       <div v-if="activeTab === 'leads'" class="admin-section">
         <div class="admin-section__header">
@@ -329,17 +339,33 @@
 </template>
 
 <script setup>
+import AdminUsersTab from '~/components/admin/AdminUsersTab.vue'
+import AdminProjectsTab from '~/components/admin/AdminProjectsTab.vue'
+
 useHead({ title: 'Админ-панель — Khudyakov Inc.' })
 
-const tabs = [
-  { key: 'aimanager', label: 'Менеджер ИИ', icon: '🤖' },
-  { key: 'team', label: 'Команда', icon: '👥' },
-  { key: 'services', label: 'Услуги', icon: '🛠️' },
-  { key: 'portfolio', label: 'Портфолио', icon: '💼' },
-  { key: 'leads', label: 'Заявки', icon: '📩' },
-]
+const userRole = ref('employee')
+const userId = ref('')
 
-const activeTab = ref('leads')
+const tabs = computed(() => {
+  const allTabs = [
+    { key: 'projects', label: 'Проекты', icon: '🗂️' },
+    { key: 'leads', label: 'Заявки', icon: '📩', roles: ['admin', 'manager'] },
+    { key: 'aimanager', label: 'Менеджер ИИ', icon: '🤖', roles: ['admin', 'manager'] },
+    { key: 'users', label: 'Сотрудники CRM', icon: '🔑', roles: ['admin'] },
+    { key: 'team', label: 'Команда', icon: '👥', roles: ['admin', 'manager'] },
+    { key: 'services', label: 'Услуги', icon: '🛠️', roles: ['admin', 'manager'] },
+    { key: 'portfolio', label: 'Портфолио', icon: '💼', roles: ['admin', 'manager'] },
+  ]
+  return allTabs.filter(t => !t.roles || t.roles.includes(userRole.value))
+})
+
+const activeTab = ref('projects')
+watch(tabs, (newTabs) => {
+  if (!newTabs.find(t => t.key === activeTab.value)) {
+    activeTab.value = newTabs[0]?.key || 'projects'
+  }
+})
 const showModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
@@ -366,13 +392,29 @@ const showAiInstrModal = ref(false)
 // Auth check
 const token = ref('')
 
-onMounted(() => {
+onMounted(async () => {
   if (typeof window !== 'undefined') {
     token.value = localStorage.getItem('admin_token') || ''
     if (!token.value) {
       navigateTo('/admin/login')
       return
     }
+
+    try {
+      const me = await $fetch('/api/users/me', { headers: authHeaders() })
+      userRole.value = me.role
+      userId.value = me.id
+    } catch (e) {
+      if (e.data?.detail === "Cannot get user profile for superadmin") {
+        userRole.value = 'admin'
+        userId.value = 0
+      } else {
+        localStorage.removeItem('admin_token')
+        navigateTo('/admin/login')
+        return
+      }
+    }
+
     loadAll()
   }
 })

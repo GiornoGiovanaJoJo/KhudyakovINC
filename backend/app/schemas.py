@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-from .models import LeadStatus, LeadPriority
+from .models import LeadStatus, LeadPriority, UserRole, ProjectStatus, TaskStatus, TaskPriority
 
 
 # ── Team ──────────────────────────────────────────────
@@ -121,6 +121,7 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     telegram: Optional[str] = None
+    role: UserRole = UserRole.EMPLOYEE
 
 
 class UserCreate(UserBase):
@@ -132,6 +133,7 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     telegram: Optional[str] = None
     password: Optional[str] = None
+    role: Optional[UserRole] = None
 
 
 class UserResponse(UserBase):
@@ -158,6 +160,66 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+
+# ── Projects ──────────────────────────────────────────
+
+class ProjectBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: ProjectStatus = ProjectStatus.ACTIVE
+    deadline: Optional[datetime] = None
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[ProjectStatus] = None
+    deadline: Optional[datetime] = None
+
+class ProjectMemberUpdate(BaseModel):
+    user_ids: List[int]
+
+class ProjectResponse(ProjectBase):
+    id: int
+    created_by_id: int
+    created_at: datetime
+    members: List[UserResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ── Tasks ─────────────────────────────────────────────
+
+class TaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: TaskStatus = TaskStatus.TODO
+    priority: TaskPriority = TaskPriority.MEDIUM
+    project_id: int
+    assignee_id: Optional[int] = None
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[TaskStatus] = None
+    priority: Optional[TaskPriority] = None
+    assignee_id: Optional[int] = None
+
+class TaskResponse(TaskBase):
+    id: int
+    reporter_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 # ── Leads ─────────────────────────────────────────────

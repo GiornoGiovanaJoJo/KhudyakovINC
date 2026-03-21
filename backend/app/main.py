@@ -2,14 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import engine, Base
-from .routers import team, services, portfolio, chat, auth, leads, upload, users, ai, push
+from .routers import team, services, portfolio, chat, auth, leads, upload, users, ai, push, projects, tasks
 from fastapi.staticfiles import StaticFiles
 import os
+from sqlalchemy import text
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'admin'"))
+        except Exception:
+            pass
     yield
 
 
