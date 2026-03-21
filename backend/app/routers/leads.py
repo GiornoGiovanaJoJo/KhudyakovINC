@@ -112,8 +112,8 @@ async def create_lead(
     await db.commit()
     await db.refresh(db_lead)
 
-    # Forward to our new local Telegram bot microservice
-    url = "http://telegram_bot:8001/send_lead"
+    # Forward to our local Telegram bot microservice (localhost for host network mode)
+    url = "http://localhost:8001/send_lead"
     payload = {
         "id": db_lead.id,
         "name": lead.name,

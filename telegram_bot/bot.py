@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 import httpx
@@ -47,8 +48,15 @@ def save_chat(chat_id: int):
         return True
     return False
 
-# Setup Bot and Dispatcher
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+# Setup Bot and Dispatcher with optional proxy
+PROXY_URL = os.getenv("PROXY_URL", "")
+if PROXY_URL:
+    logging.info(f"[PROXY] Using proxy: {PROXY_URL}")
+    session = AiohttpSession(proxy=PROXY_URL)
+    bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+else:
+    logging.warning("[PROXY] No PROXY_URL set, connecting directly.")
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
 @dp.message(CommandStart())
@@ -73,7 +81,18 @@ async def cmd_help(message: types.Message):
     await message.answer(help_text)
 
 # FastAPI Integration
-app = FastAPI(title="Telegram Leads Webhook API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start bot polling in background
+    task = asyncio.create_task(start_bot())
+    yield
+    task.cancel()
+    try:
+        await bot.session.close()
+    except Exception:
+        pass
+
+app = FastAPI(title="Telegram Leads Webhook API", lifespan=lifespan)
 
 class LeadData(BaseModel):
     id: int
@@ -132,7 +151,7 @@ async def send_lead(lead: LeadData):
             
             # 2. Fetch and send the PDF if available
             try:
-                backend_pdf_url = f"http://backend:8000/api/leads/{lead.id}/proposal"
+                backend_pdf_url = f"http://localhost:8000/api/leads/{lead.id}/proposal"
                 async with httpx.AsyncClient(timeout=20.0) as client:
                     pdf_res = await client.get(backend_pdf_url, headers={"X-Internal-Secret": INTERNAL_SECRET})
                     if pdf_res.status_code == 200:
@@ -173,7 +192,7 @@ async def handle_status_change(callback: types.CallbackQuery):
     
     # Match INTERNAL_SECRET
     INTERNAL_SECRET = "super-secret-service-key"
-    backend_url = f"http://backend:8000/api/leads/{lead_id}"
+    backend_url = f"http://localhost:8000/api/leads/{lead_id}"
     try:
         async with httpx.AsyncClient() as client:
             headers = {"X-Internal-Secret": INTERNAL_SECRET}
@@ -203,10 +222,7 @@ async def start_bot():
     # start polling
     await dp.start_polling(bot)
 
-@app.on_event("startup")
-async def on_startup():
-    # Start bot polling in background
-    asyncio.create_task(start_bot())
+# Startup handled by lifespan context manager above
 
 if __name__ == "__main__":
     uvicorn.run("bot:app", host="0.0.0.0", port=8001, reload=False)
