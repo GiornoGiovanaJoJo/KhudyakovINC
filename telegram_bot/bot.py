@@ -25,9 +25,73 @@ if not BOT_TOKEN:
 
 # Logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # JSON db
 CHATS_FILE = "chats.json"
+
+# ── Proxy Configuration ──────────────────────────────────────────
+# Priority: PROXY_URL env var first, then fallback list
+PROXY_URL_ENV = os.getenv("PROXY_URL", "")
+
+FALLBACK_PROXIES = [
+    "socks5://116.202.100.234:37435",
+    "socks5://173.212.237.43:43648",
+    "socks5://188.40.158.211:1088",
+    "socks5://65.108.203.36:18080",
+    "socks5://46.8.60.2:1080",
+    "socks5://193.233.254.77:1080",
+    "socks5://84.22.61.69:1080",
+    "socks5://198.27.82.161:9050",
+    "socks5://164.90.138.101:1080",
+    "socks5://89.251.26.233:7890",
+]
+
+def _build_proxy_list():
+    """Build ordered proxy list: env var first, then fallbacks."""
+    proxies = []
+    if PROXY_URL_ENV:
+        proxies.append(PROXY_URL_ENV)
+    for p in FALLBACK_PROXIES:
+        if p not in proxies:
+            proxies.append(p)
+    return proxies
+
+
+async def _test_proxy(proxy_url: str, token: str) -> bool:
+    """Test if a proxy can reach Telegram API by calling getMe."""
+    try:
+        session = AiohttpSession(proxy=proxy_url)
+        test_bot = Bot(token=token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        me = await asyncio.wait_for(test_bot.get_me(), timeout=10)
+        await test_bot.session.close()
+        logger.info(f"[PROXY] ✅ Proxy {proxy_url} works! Bot: @{me.username}")
+        return True
+    except Exception as e:
+        logger.warning(f"[PROXY] ❌ Proxy {proxy_url} failed: {e}")
+        try:
+            await test_bot.session.close()
+        except:
+            pass
+        return False
+
+
+async def _find_working_proxy(token: str) -> str | None:
+    """Try all proxies and return the first working one."""
+    proxy_list = _build_proxy_list()
+    logger.info(f"[PROXY] Testing {len(proxy_list)} proxies...")
+    
+    for proxy_url in proxy_list:
+        if await _test_proxy(proxy_url, token):
+            return proxy_url
+    
+    logger.error("[PROXY] No working proxy found!")
+    return None
+
+
+# ── Global bot/dp (will be initialized in lifespan) ──────────────
+bot: Bot | None = None
+dp = Dispatcher()
 
 def load_chats():
     if not os.path.exists(CHATS_FILE):
@@ -48,16 +112,6 @@ def save_chat(chat_id: int):
         return True
     return False
 
-# Setup Bot and Dispatcher with optional proxy
-PROXY_URL = os.getenv("PROXY_URL", "")
-if PROXY_URL:
-    logging.info(f"[PROXY] Using proxy: {PROXY_URL}")
-    session = AiohttpSession(proxy=PROXY_URL)
-    bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-else:
-    logging.warning("[PROXY] No PROXY_URL set, connecting directly.")
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
@@ -80,11 +134,25 @@ async def cmd_help(message: types.Message):
     )
     await message.answer(help_text)
 
-# FastAPI Integration
+
+# ── FastAPI Integration ──────────────────────────────────────────
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Start bot polling in background
-    task = asyncio.create_task(start_bot())
+async def lifespan(fapi: FastAPI):
+    global bot
+    
+    # Find a working proxy
+    working_proxy = await _find_working_proxy(BOT_TOKEN)
+    
+    if working_proxy:
+        session = AiohttpSession(proxy=working_proxy)
+        bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        logger.info(f"[BOT] Started with proxy: {working_proxy}")
+    else:
+        # Try direct connection as last resort
+        bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+        logger.warning("[BOT] Starting WITHOUT proxy (direct connection)")
+    
+    task = asyncio.create_task(dp.start_polling(bot))
     yield
     task.cancel()
     try:
@@ -104,6 +172,8 @@ class LeadData(BaseModel):
 
 @app.post("/send_lead")
 async def send_lead(lead: LeadData):
+    global bot
+    
     chats = load_chats()
     if not chats:
         raise HTTPException(status_code=400, detail="No active Telegram chats registered.")
@@ -126,30 +196,24 @@ async def send_lead(lead: LeadData):
 
     text += f"💬 <b>Полная история чата:</b>\n"
     
-    # Режем историю и экранируем HTML, чтобы точно влезть в лимит 4096 символов Telegram
     history_text = lead.chat_history[:2000] if lead.chat_history else "Нет истории"
     safe_history = html.escape(history_text)
     if len(lead.chat_history) > 2000:
         safe_history += "...\n[История обрезана]"
     text += f"<pre>{safe_history}</pre>"
 
-    
-    # Кнопки управления статусом
     builder = InlineKeyboardBuilder()
     builder.button(text="🕒 В работу", callback_data=f"status_{lead.id}_in_progress")
     builder.button(text="✅ Завершено", callback_data=f"status_{lead.id}_completed")
     builder.adjust(2)
     
     success_count: int = 0
-    # Internal secret to fetch PDF
     INTERNAL_SECRET = "super-secret-service-key"
     
     for chat_id in chats:
         try:
-            # 1. Send the lead info message
             await bot.send_message(chat_id=chat_id, text=text, reply_markup=builder.as_markup())
             
-            # 2. Fetch and send the PDF if available
             try:
                 backend_pdf_url = f"http://localhost:8000/api/leads/{lead.id}/proposal"
                 async with httpx.AsyncClient(timeout=20.0) as client:
@@ -163,20 +227,33 @@ async def send_lead(lead: LeadData):
                             caption=f"📄 Сгенерированное КП для {safe_name}"
                         )
             except Exception as pdf_err:
-                logging.error(f"Failed to fetch/send PDF for lead {lead.id}: {pdf_err}")
+                logger.error(f"Failed to fetch/send PDF for lead {lead.id}: {pdf_err}")
                 
             success_count += 1
         except Exception as e:
-            logging.error(f"Failed to send lead to chat {chat_id}: {e}")
+            logger.error(f"Failed to send lead to chat {chat_id}: {e}")
+            
+            # If proxy died, try to find a new one and retry
+            if "proxy" in str(e).lower() or "connect" in str(e).lower():
+                logger.info("[PROXY] Proxy seems dead, trying to find a new one...")
+                new_proxy = await _find_working_proxy(BOT_TOKEN)
+                if new_proxy:
+                    session = AiohttpSession(proxy=new_proxy)
+                    bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+                    try:
+                        await bot.send_message(chat_id=chat_id, text=text, reply_markup=builder.as_markup())
+                        success_count += 1
+                        logger.info(f"[PROXY] Retry with new proxy succeeded!")
+                    except Exception as retry_err:
+                        logger.error(f"[PROXY] Retry also failed: {retry_err}")
             
     if success_count > 0:
         return {"status": "success", "messages_sent": success_count}
     else:
-        raise HTTPException(status_code=500, detail="Emails failed to deliver to registered chats.")
+        raise HTTPException(status_code=500, detail="Failed to deliver to registered chats.")
 
 @dp.callback_query(F.data.startswith("status_"))
 async def handle_status_change(callback: types.CallbackQuery):
-    # Fix: status_1_in_progress -> parts=["status", "1", "in", "progress"]
     parts = callback.data.split("_")
     if len(parts) < 3:
         return
@@ -184,13 +261,11 @@ async def handle_status_change(callback: types.CallbackQuery):
     lead_id = parts[1]
     new_status = "_".join(parts[2:])
     
-    # Map visual status
     status_map = {
         "in_progress": "🕒 В РАБОТЕ",
         "completed": "✅ ЗАВЕРШЕНО"
     }
     
-    # Match INTERNAL_SECRET
     INTERNAL_SECRET = "super-secret-service-key"
     backend_url = f"http://localhost:8000/api/leads/{lead_id}"
     try:
@@ -200,29 +275,20 @@ async def handle_status_change(callback: types.CallbackQuery):
             if response.status_code == 200:
                 await callback.answer(f"Статус изменен на: {status_map.get(new_status)}")
                 
-                # Update message text to show new status
                 new_text = callback.message.html_text
                 if "🟡 <b>СТАТУС:" in new_text:
-                    # Replace existing status
                     lines = new_text.split("\n")
                     lines[0] = f"🟡 <b>СТАТУС: {status_map.get(new_status)}</b>"
                     new_text = "\n".join(lines)
                 else:
-                    # Add new status at the top
                     new_text = f"🟡 <b>СТАТУС: {status_map.get(new_status)}</b>\n\n" + new_text
                 
                 await callback.message.edit_text(text=new_text, reply_markup=callback.message.reply_markup)
             else:
                 await callback.answer("Ошибка при обновлении в базе данных", show_alert=True)
     except Exception as e:
-        logging.error(f"Error updating status: {e}")
+        logger.error(f"Error updating status: {e}")
         await callback.answer("Ошибка связи с бэкендом", show_alert=True)
-
-async def start_bot():
-    # start polling
-    await dp.start_polling(bot)
-
-# Startup handled by lifespan context manager above
 
 if __name__ == "__main__":
     uvicorn.run("bot:app", host="0.0.0.0", port=8001, reload=False)
