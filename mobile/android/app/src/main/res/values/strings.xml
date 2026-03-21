@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Khudyakov Leads</string>
+    <string name="title_activity_main">Khudyakov Leads</string>
+    <string name="package_name">com.khudyakov.leads</string>
+    <string name="custom_url_scheme">com.khudyakov.leads</string>
+</resources>

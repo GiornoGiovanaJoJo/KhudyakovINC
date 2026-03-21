@@ -4,7 +4,9 @@
  * In production (Capacitor) we use the full server URL.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || ''
+// In development, we use '' to let Vite proxy /api to localhost:8000.
+// In production (Capacitor APK), we must use the full URL of the server.
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? '' : 'http://leads.khudyakov-inc.ru')
 
 function getHeaders() {
   const headers = { 'Content-Type': 'application/json' }
