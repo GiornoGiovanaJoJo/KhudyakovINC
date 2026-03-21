@@ -35,12 +35,19 @@ export function useScrollReveal() {
           if (node.classList?.contains('reveal')) observeElement(node)
           node.querySelectorAll?.('.reveal').forEach(observeElement)
         }
+        // Restore attribute checking: when Vue toggles a class (like faq-item--open), 
+        // it can overwrite the reveal--visible class. We need to re-add it.
+        if (mutation.type === 'attributes' && mutation.target.classList?.contains('reveal')) {
+          observeElement(mutation.target)
+        }
       }
     })
 
     mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
     })
   })
 
