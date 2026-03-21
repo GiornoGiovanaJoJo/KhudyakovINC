@@ -137,6 +137,15 @@ async def create_lead(
         return {"status": "warning", "message": "Lead saved but notification failed.", "id": db_lead.id}
 
 
+@router.get("/count/new")
+async def get_new_leads_count(
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    result = await db.execute(select(Lead).where(Lead.status == LeadStatus.NEW))
+    return {"count": len(result.scalars().all())}
+
+
 @router.get("/", response_model=list[LeadResponse])
 async def get_leads(
     db: AsyncSession = Depends(get_db),
