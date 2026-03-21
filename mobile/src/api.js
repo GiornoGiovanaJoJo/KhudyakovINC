@@ -31,7 +31,6 @@ async function request(method, path, body = null) {
     throw new Error(err.detail || 'Request failed')
   }
 
-  // Handle empty responses (204 etc.)
   const text = await res.text()
   return text ? JSON.parse(text) : null
 }
@@ -44,7 +43,17 @@ export const api = {
   // Leads
   getLeads: () => request('GET', '/api/leads'),
   updateLead: (id, data) => request('PATCH', `/api/leads/${id}`, data),
+  deleteLead: (id) => request('DELETE', `/api/leads/${id}`),
   getNewLeadsCount: () => request('GET', '/api/leads/count/new'),
+  searchLeads: (q) => request('GET', `/api/leads/search?q=${encodeURIComponent(q)}`),
+
+  // Stats
+  getStats: () => request('GET', '/api/leads/stats'),
+
+  // Notes
+  getNotes: (leadId) => request('GET', `/api/leads/${leadId}/notes`),
+  addNote: (leadId, text) => request('POST', `/api/leads/${leadId}/notes`, { text }),
+  deleteNote: (leadId, noteId) => request('DELETE', `/api/leads/${leadId}/notes/${noteId}`),
 
   // Push
   registerPushToken: (token, platform) =>

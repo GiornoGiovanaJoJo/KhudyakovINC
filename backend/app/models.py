@@ -12,6 +12,12 @@ class LeadStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class LeadPriority(str, Enum):
+    HOT = "hot"
+    WARM = "warm"
+    COLD = "cold"
+
+
 class TeamMember(Base):
     __tablename__ = "team_members"
 
@@ -73,10 +79,24 @@ class Lead(Base):
     chat_history = Column(Text, nullable=True)
     ai_summary = Column(Text, nullable=True)
     status = Column(SQLEnum(LeadStatus), default=LeadStatus.NEW)
+    priority = Column(SQLEnum(LeadPriority), default=LeadPriority.WARM)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="leads")
+    notes = relationship("LeadNote", back_populates="lead", cascade="all, delete-orphan")
+
+
+class LeadNote(Base):
+    __tablename__ = "lead_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id", ondelete="CASCADE"), nullable=False)
+    author = Column(String(100), nullable=False, default="admin")
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    lead = relationship("Lead", back_populates="notes")
 
 
 class DeviceToken(Base):
@@ -87,4 +107,3 @@ class DeviceToken(Base):
     platform = Column(String(20), nullable=False, default="android")
     admin_username = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-

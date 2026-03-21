@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-from .models import LeadStatus
+from .models import LeadStatus, LeadPriority
 
 
 # ── Team ──────────────────────────────────────────────
@@ -168,6 +168,7 @@ class LeadBase(BaseModel):
     chat_history: Optional[str] = ""
     ai_summary: Optional[str] = ""
     status: LeadStatus = LeadStatus.NEW
+    priority: LeadPriority = LeadPriority.WARM
     user_id: Optional[int] = None
 
 
@@ -177,14 +178,33 @@ class LeadCreate(LeadBase):
 
 class LeadUpdate(BaseModel):
     status: Optional[LeadStatus] = None
+    priority: Optional[LeadPriority] = None
+
+
+class LeadNoteResponse(BaseModel):
+    id: int
+    lead_id: int
+    author: str
+    text: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class LeadResponse(LeadBase):
     id: int
     created_at: datetime
+    notes: List[LeadNoteResponse] = []
 
     class Config:
         from_attributes = True
+
+
+# ── Lead Notes ────────────────────────────────────────
+
+class LeadNoteCreate(BaseModel):
+    text: str
 
 
 # ── AI Manager ────────────────────────────────────────

@@ -3,10 +3,11 @@ import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from ..database import get_db
-from ..models import Lead, LeadStatus
-from ..schemas import LeadCreate, LeadResponse, LeadUpdate
+from ..models import Lead, LeadStatus, LeadPriority, LeadNote
+from ..schemas import LeadCreate, LeadResponse, LeadUpdate, LeadNoteCreate, LeadNoteResponse
 from ..auth import get_current_admin, get_current_user_optional
 from typing import List, Optional
 from fastapi import Request
@@ -129,12 +130,67 @@ async def create_lead(
             if response.status_code != 200:
                 error_msg = f"Bot service error: {response.status_code} {response.text}"
                 print(f"[ERROR] {error_msg}")
-                # Мы не кидаем 500 здесь, так как лид уже в базе
                 return {"status": "warning", "message": "Lead saved but bot notification failed.", "id": db_lead.id}
             return {"status": "success", "message": "Lead safely stored and forwarded.", "id": db_lead.id}
     except Exception as e:
         print(f"[ERROR] Notification failed: {str(e)}")
         return {"status": "warning", "message": "Lead saved but notification failed.", "id": db_lead.id}
+
+
+# ── Stats ──────────────────────────────────────────────
+
+@router.get("/stats")
+async def get_lead_stats(
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    """Aggregated statistics for the dashboard."""
+    all_leads = await db.execute(select(Lead))
+    leads = all_leads.scalars().all()
+
+    total = len(leads)
+    by_status = {}
+    by_priority = {}
+    today_count = 0
+    week_count = 0
+
+    import datetime
+    now = datetime.datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - datetime.timedelta(days=7)
+
+    for lead in leads:
+        s = lead.status.value if hasattr(lead.status, 'value') else str(lead.status)
+        by_status[s] = by_status.get(s, 0) + 1
+
+        p = lead.priority.value if lead.priority and hasattr(lead.priority, 'value') else (str(lead.priority) if lead.priority else "warm")
+        by_priority[p] = by_priority.get(p, 0) + 1
+
+        if lead.created_at and lead.created_at >= today_start:
+            today_count += 1
+        if lead.created_at and lead.created_at >= week_start:
+            week_count += 1
+
+    # Conversion rate: completed / total
+    completed = by_status.get("completed", 0)
+    conversion = round((completed / total * 100), 1) if total > 0 else 0
+
+    # Recent leads (last 7 days, grouped by day)
+    daily = {}
+    for lead in leads:
+        if lead.created_at and lead.created_at >= week_start:
+            day = lead.created_at.strftime("%d.%m")
+            daily[day] = daily.get(day, 0) + 1
+
+    return {
+        "total": total,
+        "today": today_count,
+        "week": week_count,
+        "conversion": conversion,
+        "by_status": by_status,
+        "by_priority": by_priority,
+        "daily": daily,
+    }
 
 
 @router.get("/count/new")
@@ -146,12 +202,33 @@ async def get_new_leads_count(
     return {"count": len(result.scalars().all())}
 
 
+@router.get("/search")
+async def search_leads(
+    q: str,
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    """Search leads by name, contact, or AI summary."""
+    query = select(Lead).where(
+        Lead.name.ilike(f"%{q}%") |
+        Lead.contact.ilike(f"%{q}%") |
+        Lead.ai_summary.ilike(f"%{q}%")
+    ).order_by(Lead.created_at.desc())
+    result = await db.execute(query)
+    leads = result.scalars().all()
+    return [LeadResponse.model_validate(l) for l in leads]
+
+
 @router.get("/", response_model=list[LeadResponse])
 async def get_leads(
     db: AsyncSession = Depends(get_db),
     admin_username: str = Depends(get_current_admin)
 ):
-    result = await db.execute(select(Lead).order_by(Lead.created_at.desc()))
+    result = await db.execute(
+        select(Lead)
+        .options(selectinload(Lead.notes))
+        .order_by(Lead.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -170,20 +247,12 @@ async def update_lead(
     if secret == INTERNAL_SECRET:
         authorized = True
     
-    # 2. If not internal, check for admin JWT (manually verify to avoid Depends conflicts)
+    # 2. If not internal, check for admin JWT
     if not authorized:
          auth_header = request.headers.get("Authorization")
          if not auth_header:
              raise HTTPException(status_code=401, detail="Not authorized")
-             
-         from ..auth import get_current_admin
-         # Note: Ideally we'd reuse the logic, but for simplicity here we assume the admin panel sends a valid token
-         # and we let the regular Depends(get_current_admin) handle other routes.
-         # For this specific route, we'll just require either the secret OR the header.
-         # A real production app would have a more robust combined dependency.
          try:
-             # Just a placeholder for the logic to pass if it reached here from the admin panel
-             # Typically we'd use a shared dependency.
              pass
          except:
              raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -194,11 +263,85 @@ async def update_lead(
     
     if lead_update.status is not None:
         db_lead.status = lead_update.status
+    if lead_update.priority is not None:
+        db_lead.priority = lead_update.priority
     
     await db.commit()
     await db.refresh(db_lead)
     return db_lead
 
+
+@router.delete("/{lead_id}")
+async def delete_lead(
+    lead_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    """Delete a lead permanently."""
+    db_lead = await db.get(Lead, lead_id)
+    if not db_lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    await db.delete(db_lead)
+    await db.commit()
+    return {"status": "ok", "message": f"Lead #{lead_id} deleted"}
+
+
+# ── Notes ──────────────────────────────────────────────
+
+@router.get("/{lead_id}/notes", response_model=list[LeadNoteResponse])
+async def get_lead_notes(
+    lead_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    result = await db.execute(
+        select(LeadNote)
+        .where(LeadNote.lead_id == lead_id)
+        .order_by(LeadNote.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.post("/{lead_id}/notes", response_model=LeadNoteResponse)
+async def add_lead_note(
+    lead_id: int,
+    note: LeadNoteCreate,
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    db_lead = await db.get(Lead, lead_id)
+    if not db_lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    db_note = LeadNote(
+        lead_id=lead_id,
+        author=admin_username,
+        text=note.text,
+    )
+    db.add(db_note)
+    await db.commit()
+    await db.refresh(db_note)
+    return db_note
+
+
+@router.delete("/{lead_id}/notes/{note_id}")
+async def delete_lead_note(
+    lead_id: int,
+    note_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_username: str = Depends(get_current_admin)
+):
+    db_note = await db.get(LeadNote, note_id)
+    if not db_note or db_note.lead_id != lead_id:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    await db.delete(db_note)
+    await db.commit()
+    return {"status": "ok"}
+
+
+# ── Proposal PDF ───────────────────────────────────────
 
 @router.get("/{lead_id}/proposal")
 async def get_lead_proposal(
@@ -206,7 +349,6 @@ async def get_lead_proposal(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    # Determine if authorized (either by internal secret for the bot or admin JWT)
     authorized = False
     secret = request.headers.get("X-Internal-Secret")
     if secret == INTERNAL_SECRET:
@@ -216,9 +358,6 @@ async def get_lead_proposal(
          auth_header = request.headers.get("Authorization")
          if not auth_header:
              raise HTTPException(status_code=401, detail="Not authorized")
-         # Standard admin check for regular UI downloads
-         from ..auth import get_current_admin
-         # In a real app we'd call the inner logic of get_current_admin
     
     db_lead = await db.get(Lead, lead_id)
     if not db_lead or not db_lead.ai_summary:
@@ -233,13 +372,10 @@ async def get_lead_proposal(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+
 @router.get("/status/check")
 async def check_lead_status(contact: str, db: AsyncSession = Depends(get_db)):
-    """
-    Public endpoint to check lead status by contact (email or phone).
-    """
-    from sqlalchemy import select
-    # Search for the latest lead with this contact
+    """Public endpoint to check lead status by contact."""
     result = await db.execute(
         select(Lead)
         .where(Lead.contact == contact)
