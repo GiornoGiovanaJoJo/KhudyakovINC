@@ -12,93 +12,89 @@ const canvas = ref(null)
 let ctx = null
 let animationFrameId = null
 let particles = []
-const mouse = { x: null, y: null, radius: 120 }
+const mouse = { x: null, y: null, radius: 150 }
 let isVisible = true
+let w, h
 
-// ─── Spatial Grid for O(n) connection lookups ────────
-const CELL_SIZE = 120
-let grid = {}
-
-function getCellKey(x, y) {
-  return `${Math.floor(x / CELL_SIZE)},${Math.floor(y / CELL_SIZE)}`
-}
-
-function buildGrid() {
-  grid = {}
-  for (let i = 0; i < particles.length; i++) {
-    const key = getCellKey(particles[i].x, particles[i].y)
-    if (!grid[key]) grid[key] = []
-    grid[key].push(i)
-  }
-}
-
-function getNeighborKeys(cx, cy) {
-  const keys = []
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      keys.push(`${cx + dx},${cy + dy}`)
-    }
-  }
-  return keys
-}
+// We use a much simpler particle system without n^2 connections for maximum performance.
+// Instead of drawing lines between all particles, we let particles react to the mouse
+// and draw a soft glow around the mouse itself.
 
 class Particle {
-  constructor(x, y, size, baseColor, speedX, speedY, layer) {
+  constructor(x, y) {
     this.x = x
     this.y = y
-    this.size = size
-    this.baseSize = size
-    this.baseColor = baseColor
-    this.color = baseColor
-    this.speedX = speedX
-    this.speedY = speedY
-    this.density = (Math.random() * 30) + 1
-    this.layer = layer
-    this.alpha = layer === 0 ? 0.3 : layer === 1 ? 0.6 : 0.9
-    this.baseAlpha = this.alpha
+    this.baseX = x
+    this.baseY = y
+    this.size = Math.random() * 2 + 0.5
+    this.baseSize = this.size
+    
+    // Assign colors based on depth layer
+    const layer = Math.random()
+    if (layer < 0.3) {
+      this.color = 'rgba(108, 92, 231, 0.4)' // Purple deep
+      this.speed = Math.random() * 0.2 + 0.1
+    } else if (layer < 0.7) {
+      this.color = 'rgba(0, 206, 201, 0.6)' // Cyan mid
+      this.speed = Math.random() * 0.4 + 0.2
+    } else {
+      this.color = 'rgba(162, 155, 254, 0.8)' // Light purple front
+      this.speed = Math.random() * 0.6 + 0.3
+    }
+
+    this.angle = Math.random() * Math.PI * 2
+    this.vx = Math.cos(this.angle) * this.speed
+    this.vy = Math.sin(this.angle) * this.speed
+    // Random drift factor
+    this.drift = Math.random() * 0.05
   }
 
   draw() {
     ctx.beginPath()
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
     ctx.fillStyle = this.color
-    ctx.globalAlpha = this.alpha
     ctx.fill()
-    ctx.globalAlpha = 1
   }
 
-  update(w, h) {
-    this.x += this.speedX * (0.5 + this.layer * 0.3)
-    this.y += this.speedY * (0.5 + this.layer * 0.3)
+  update() {
+    // Basic movement
+    this.x += this.vx
+    this.y += this.vy
+    
+    // Slow drift drift
+    this.angle += this.drift
+    this.vx = Math.cos(this.angle) * this.speed
+    this.vy = Math.sin(this.angle) * this.speed
 
-    if (this.x < 0 || this.x > w) this.speedX = -this.speedX
-    if (this.y < 0 || this.y > h) this.speedY = -this.speedY
+    // Wrap around screen
+    if (this.x < 0) this.x = w
+    if (this.x > w) this.x = 0
+    if (this.y < 0) this.y = h
+    if (this.y > h) this.y = 0
 
+    // Mouse interaction
     if (mouse.x != null && mouse.y != null) {
       const dx = mouse.x - this.x
       const dy = mouse.y - this.y
       const distance = Math.sqrt(dx * dx + dy * dy)
 
       if (distance < mouse.radius) {
+        // Particles flee from the mouse
         const force = (mouse.radius - distance) / mouse.radius
         const forceDirectionX = dx / distance
         const forceDirectionY = dy / distance
 
-        this.x -= forceDirectionX * force * this.density * 0.6
-        this.y -= forceDirectionY * force * this.density * 0.6
-
+        this.x -= forceDirectionX * force * 3
+        this.y -= forceDirectionY * force * 3
+        
+        // Glow slightly when near mouse
         this.size = this.baseSize + force * 2
-        this.alpha = Math.min(1, this.baseAlpha + force * 0.5)
-        this.color = `rgba(162, 155, 254, ${0.6 + force * 0.4})`
       } else {
-        this.size += (this.baseSize - this.size) * 0.05
-        this.alpha += (this.baseAlpha - this.alpha) * 0.05
-        this.color = this.baseColor
+        // Return to normal size
+        this.size += (this.baseSize - this.size) * 0.1
       }
     } else {
-      this.size += (this.baseSize - this.size) * 0.05
-      this.alpha += (this.baseAlpha - this.alpha) * 0.05
-      this.color = this.baseColor
+      this.size += (this.baseSize - this.size) * 0.1
     }
 
     this.draw()
@@ -107,121 +103,50 @@ class Particle {
 
 const init = () => {
   particles = []
-  const w = canvas.value.width
-  const h = canvas.value.height
-  // Reduced density: was /7000, now /12000
-  const numberOfParticles = Math.min((w * h) / 12000, 200)
-
-  const colors = [
-    'rgba(108, 92, 231, 0.8)',
-    'rgba(162, 155, 254, 0.7)',
-    'rgba(253, 121, 168, 0.6)',
-    'rgba(0, 206, 201, 0.5)',
-  ]
+  w = canvas.value.width = container.value.offsetWidth
+  h = canvas.value.height = container.value.offsetHeight
+  
+  // Calculate particle count based on screen area, but cap it for performance
+  // 1 particle per 10,000 pixels is performant without lines
+  const numberOfParticles = Math.min((w * h) / 10000, 300)
 
   for (let i = 0; i < numberOfParticles; i++) {
-    const layer = Math.random() < 0.3 ? 0 : Math.random() < 0.6 ? 1 : 2
-    const size = layer === 0 ? Math.random() * 1 + 0.3
-              : layer === 1 ? Math.random() * 1.5 + 0.8
-              : Math.random() * 2.5 + 1.2
-
-    particles.push(new Particle(
-      Math.random() * w,
-      Math.random() * h,
-      size,
-      colors[Math.floor(Math.random() * colors.length)],
-      (Math.random() * 0.6) - 0.3,
-      (Math.random() * 0.6) - 0.3,
-      layer
-    ))
+    particles.push(new Particle(Math.random() * w, Math.random() * h))
   }
 }
 
-const drawCursorGlow = () => {
+const drawAmbientCursor = () => {
   if (mouse.x == null || mouse.y == null) return
-  const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 180)
-  gradient.addColorStop(0, 'rgba(108, 92, 231, 0.12)')
-  gradient.addColorStop(0.4, 'rgba(108, 92, 231, 0.05)')
-  gradient.addColorStop(1, 'transparent')
-  ctx.fillStyle = gradient
-  ctx.fillRect(mouse.x - 180, mouse.y - 180, 360, 360)
-}
-
-const connect = () => {
-  // Build spatial grid once per frame
-  buildGrid()
-
-  const maxDistSq = CELL_SIZE * CELL_SIZE
-  const checked = new Set()
-
-  for (let i = 0; i < particles.length; i++) {
-    const p = particles[i]
-    const cx = Math.floor(p.x / CELL_SIZE)
-    const cy = Math.floor(p.y / CELL_SIZE)
-    const neighborKeys = getNeighborKeys(cx, cy)
-
-    for (const key of neighborKeys) {
-      const cell = grid[key]
-      if (!cell) continue
-
-      for (const j of cell) {
-        if (j <= i) continue
-        const pairKey = i * 10000 + j
-        if (checked.has(pairKey)) continue
-        checked.add(pairKey)
-
-        const dx = p.x - particles[j].x
-        const dy = p.y - particles[j].y
-        const distSq = dx * dx + dy * dy
-
-        if (distSq < maxDistSq) {
-          let opacity = 1 - (distSq / maxDistSq)
-
-          if (mouse.x != null && mouse.y != null) {
-            const midX = (p.x + particles[j].x) / 2
-            const midY = (p.y + particles[j].y) / 2
-            const cursorDist = Math.sqrt((mouse.x - midX) ** 2 + (mouse.y - midY) ** 2)
-            if (cursorDist < mouse.radius) {
-              opacity *= 1 + (1 - cursorDist / mouse.radius) * 2
-            }
-          }
-
-          ctx.strokeStyle = `rgba(140, 150, 255, ${opacity * 0.12})`
-          ctx.lineWidth = 0.6
-          ctx.beginPath()
-          ctx.moveTo(p.x, p.y)
-          ctx.lineTo(particles[j].x, particles[j].y)
-          ctx.stroke()
-        }
-      }
-    }
-  }
+  
+  const radgrad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, mouse.radius * 1.5)
+  // Brighter glow to match the original style
+  radgrad.addColorStop(0, 'rgba(108, 92, 231, 0.15)')
+  radgrad.addColorStop(0.5, 'rgba(108, 92, 231, 0.05)')
+  radgrad.addColorStop(1, 'rgba(108, 92, 231, 0)')
+  
+  ctx.fillStyle = radgrad
+  ctx.fillRect(mouse.x - mouse.radius * 1.5, mouse.y - mouse.radius * 1.5, mouse.radius * 3, mouse.radius * 3)
 }
 
 const animate = () => {
   if (!isVisible || !canvas.value) return
   animationFrameId = requestAnimationFrame(animate)
 
-  const w = canvas.value.width
-  const h = canvas.value.height
+  // Clear canvas First
   ctx.clearRect(0, 0, w, h)
 
-  drawCursorGlow()
+  drawAmbientCursor()
 
   for (let i = 0; i < particles.length; i++) {
-    particles[i].update(w, h)
+    particles[i].update()
   }
-  connect()
 }
 
 let resizeTimeout = null
 const handleResize = () => {
-  // Debounce resize to avoid thrashing
   clearTimeout(resizeTimeout)
   resizeTimeout = setTimeout(() => {
     if (!canvas.value || !container.value) return
-    canvas.value.width = container.value.offsetWidth
-    canvas.value.height = container.value.offsetHeight
     init()
   }, 150)
 }
@@ -244,19 +169,15 @@ const handleMouseLeave = () => {
   mouse.y = null
 }
 
-// Pause animation when not in viewport
 let visibilityObserver = null
 
 onMounted(() => {
-  ctx = canvas.value.getContext('2d')
-  canvas.value.width = container.value.offsetWidth
-  canvas.value.height = container.value.offsetHeight
-
+  ctx = canvas.value.getContext('2d', { alpha: true }) // Optimize for transparent background
+  
   window.addEventListener('resize', handleResize, { passive: true })
   canvas.value.addEventListener('mousemove', handleMouseMove, { passive: true })
   canvas.value.addEventListener('mouseleave', handleMouseLeave)
 
-  // Only animate when hero is visible
   visibilityObserver = new IntersectionObserver((entries) => {
     isVisible = entries[0].isIntersecting
     if (isVisible && !animationFrameId) {
@@ -275,8 +196,7 @@ onBeforeUnmount(() => {
     canvas.value.removeEventListener('mousemove', handleMouseMove)
     canvas.value.removeEventListener('mouseleave', handleMouseLeave)
   }
-  cancelAnimationFrame(animationFrameId)
-  animationFrameId = null
+  if (animationFrameId) cancelAnimationFrame(animationFrameId)
   clearTimeout(resizeTimeout)
   visibilityObserver?.disconnect()
 })
@@ -291,14 +211,12 @@ onBeforeUnmount(() => {
   height: 100%;
   z-index: 0;
   overflow: hidden;
+  pointer-events: auto; /* Ensure it captures mouse events */
 }
 
 canvas {
   display: block;
   width: 100%;
   height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 </style>
