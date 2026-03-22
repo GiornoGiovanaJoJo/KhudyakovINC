@@ -6,7 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_URL = f"sqlite+aiosqlite:///{os.path.join(BASE_DIR, '..', 'data.db')}"
+# Check if we are in Docker by looking for /app/data volume
+if os.path.exists("/app/data"):
+    DEFAULT_DB = "sqlite+aiosqlite:////app/data/data.db"
+else:
+    DEFAULT_DB = f"sqlite+aiosqlite:///{os.path.join(BASE_DIR, '..', 'data.db')}"
+
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB)
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
