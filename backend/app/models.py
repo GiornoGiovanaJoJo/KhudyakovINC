@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 from enum import Enum
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Enum as SQLEnum, Table
 from sqlalchemy.orm import relationship
@@ -65,7 +66,7 @@ class User(Base):
     email = Column(String(100), nullable=True)
     telegram = Column(String(100), nullable=True)
     role = Column(SQLEnum(UserRole), default=UserRole.ADMIN)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
 
     leads = relationship("Lead", back_populates="user")
     projects_created = relationship("Project", back_populates="creator", foreign_keys="Project.created_by_id")
@@ -95,7 +96,7 @@ class PortfolioProject(Base):
     tags = Column(String(500), nullable=True, default="")
     figma_url = Column(String(500), nullable=True)
     external_url = Column(String(500), nullable=True)
-    gallery = Column(JSON, nullable=True, default=[])  # List of image URLs
+    gallery = Column(JSON, nullable=True, default=list)  # List of image URLs
     order = Column(Integer, default=0)
 
 
@@ -173,8 +174,8 @@ class Task(Base):
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     assignee_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reporter_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(timezone.utc), onupdate=lambda: datetime.datetime.now(timezone.utc))
 
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("User", back_populates="tasks_assigned", foreign_keys=[assignee_id])

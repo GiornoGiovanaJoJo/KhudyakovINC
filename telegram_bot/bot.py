@@ -235,7 +235,7 @@ async def send_lead(lead: LeadData):
     builder.adjust(2)
     
     success_count: int = 0
-    INTERNAL_SECRET = "super-secret-service-key"
+    INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "super-secret-service-key")
     
     for chat_id in chats:
         try:
@@ -293,7 +293,7 @@ async def handle_status_change(callback: types.CallbackQuery):
         "completed": "✅ ЗАВЕРШЕНО"
     }
     
-    INTERNAL_SECRET = "super-secret-service-key"
+    INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "super-secret-service-key")
     backend_url = f"http://localhost:8000/api/leads/{lead_id}"
     try:
         async with httpx.AsyncClient() as client:

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
+from passlib.hash import bcrypt
 import hashlib
 import hmac
 from dotenv import load_dotenv
@@ -19,13 +20,14 @@ security_optional = HTTPBearer(auto_error=False)
 
 
 def _hash_password(password: str) -> str:
-    """Simple SHA-256 hash for admin password comparison."""
+    """Simple SHA-256 hash for admin password comparison (legacy)."""
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def verify_admin(username: str, password: str) -> bool:
     if username != ADMIN_USERNAME:
         return False
+    # Compare against the plaintext ADMIN_PASSWORD from env
     return hmac.compare_digest(
         _hash_password(password),
         _hash_password(ADMIN_PASSWORD),

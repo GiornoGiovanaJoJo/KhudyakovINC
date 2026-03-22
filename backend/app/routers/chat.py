@@ -1,13 +1,16 @@
 import os
+import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from ..schemas import ChatRequest, ChatResponse
 from ..database import get_db
 from ..models import TeamMember
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -72,7 +75,7 @@ BASE_SYSTEM_PROMPT = (
 
 
 @router.post("/", response_model=ChatResponse)
-async def chat(data: ChatRequest, db: Session = Depends(get_db)):
+async def chat(data: ChatRequest, db: AsyncSession = Depends(get_db)):
     if not YANDEX_GPT_API_KEY or not YANDEX_GPT_FOLDER_ID:
         # Fallback: если ключи не настроены, вернуть заглушку
         return ChatResponse(
@@ -132,8 +135,7 @@ async def chat(data: ChatRequest, db: Session = Depends(get_db)):
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(YANDEX_GPT_URL, json=payload, headers=headers)
             if response.status_code != 200:
-                print(f"[YandexGPT ERROR] Status: {response.status_code}")
-                print(f"[YandexGPT ERROR] Body: {response.text}")
+                logger.error(f"YandexGPT error status: {response.status_code}, body: {response.text}")
             response.raise_for_status()
             result = response.json()
             
@@ -148,7 +150,7 @@ async def chat(data: ChatRequest, db: Session = Depends(get_db)):
             
             if not reply_text:
                 # В случае блокировки (content filter) YandexGPT не возвращает text
-                print(f"[YandexGPT FILTERED]: {result}")
+                logger.warning(f"YandexGPT content filtered: {result}")
                 return ChatResponse(reply="Извините, но я не могу поддержать этот разговор. Давайте вернемся к обсуждению веб-разработки и IT-проектов!")
                 
             # Принудительно вырезаем звездочки и решетки, если ИИ их все-таки сгенерировал
@@ -156,11 +158,11 @@ async def chat(data: ChatRequest, db: Session = Depends(get_db)):
             
             return ChatResponse(reply=reply_text.strip())
     except httpx.HTTPStatusError as e:
-        print(f"[YandexGPT ERROR] HTTPStatusError: {e.response.status_code} - {e.response.text}")
+        logger.error(f"YandexGPT HTTPStatusError: {e.response.status_code} - {e.response.text}")
         # Если 400 из-за фильтров Yandex:
         if e.response.status_code == 400:
              return ChatResponse(reply="Ваше сообщение заблокировано фильтром безопасности. Давайте общаться на рабочие темы!")
-        raise HTTPException(status_code=502, detail=f"Ошибка YandexGPT: {e.response.status_code}")
+        raise HTTPException(status_code=502, detail="Ошибка чат-бота")
     except Exception as e:
-        print(f"[YandexGPT ERROR] Exception: {type(e).__name__}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ошибка чат-бота: {str(e)}")
+        logger.error(f"YandexGPT unexpected error: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка чат-бота")

@@ -1,9 +1,10 @@
 import os
+import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case, cast, String
 from sqlalchemy.orm import selectinload
 from ..database import get_db
 from ..models import Lead, LeadStatus, LeadPriority, LeadNote
@@ -15,6 +16,8 @@ from ..utils.pdf_gen import generate_proposal_pdf
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "super-secret-service-key")
 
@@ -79,7 +82,7 @@ async def generate_lead_summary(chat_history: str) -> str:
             summary = data["result"]["alternatives"][0]["message"]["text"]
             return summary.replace("*", "").replace("#", "").strip()
     except Exception as e:
-        print(f"[YandexGPT Summary ERROR]: {e}")
+        logger.error(f"YandexGPT Summary error: {e}")
         return ""
 
 
@@ -128,12 +131,11 @@ async def create_lead(
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(url, json=payload)
             if response.status_code != 200:
-                error_msg = f"Bot service error: {response.status_code} {response.text}"
-                print(f"[ERROR] {error_msg}")
+                logger.error(f"Bot service error: {response.status_code} {response.text}")
                 return {"status": "warning", "message": "Lead saved but bot notification failed.", "id": db_lead.id}
             return {"status": "success", "message": "Lead safely stored and forwarded.", "id": db_lead.id}
     except Exception as e:
-        print(f"[ERROR] Notification failed: {str(e)}")
+        logger.error(f"Notification failed: {e}")
         return {"status": "warning", "message": "Lead saved but notification failed.", "id": db_lead.id}
 
 
@@ -144,42 +146,59 @@ async def get_lead_stats(
     db: AsyncSession = Depends(get_db),
     admin_username: str = Depends(get_current_admin)
 ):
-    """Aggregated statistics for the dashboard."""
-    all_leads = await db.execute(select(Lead))
-    leads = all_leads.scalars().all()
-
-    total = len(leads)
-    by_status = {}
-    by_priority = {}
-    today_count = 0
-    week_count = 0
-
+    """Aggregated statistics for the dashboard (SQL-level aggregation)."""
     import datetime
-    now = datetime.datetime.utcnow()
+    from datetime import timezone
+    now = datetime.datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - datetime.timedelta(days=7)
 
-    for lead in leads:
-        s = lead.status.value if hasattr(lead.status, 'value') else str(lead.status)
-        by_status[s] = by_status.get(s, 0) + 1
+    # Total count
+    total_result = await db.execute(select(func.count(Lead.id)))
+    total = total_result.scalar() or 0
 
-        p = lead.priority.value if lead.priority and hasattr(lead.priority, 'value') else (str(lead.priority) if lead.priority else "warm")
-        by_priority[p] = by_priority.get(p, 0) + 1
+    # Count by status (SQL GROUP BY)
+    status_result = await db.execute(
+        select(Lead.status, func.count(Lead.id)).group_by(Lead.status)
+    )
+    by_status = {}
+    for row in status_result:
+        s = row[0].value if hasattr(row[0], 'value') else str(row[0])
+        by_status[s] = row[1]
 
-        if lead.created_at and lead.created_at >= today_start:
-            today_count += 1
-        if lead.created_at and lead.created_at >= week_start:
-            week_count += 1
+    # Count by priority (SQL GROUP BY)
+    priority_result = await db.execute(
+        select(Lead.priority, func.count(Lead.id)).group_by(Lead.priority)
+    )
+    by_priority = {}
+    for row in priority_result:
+        p = row[0].value if row[0] and hasattr(row[0], 'value') else (str(row[0]) if row[0] else "warm")
+        by_priority[p] = row[1]
 
-    # Conversion rate: completed / total
+    # Today count
+    today_result = await db.execute(
+        select(func.count(Lead.id)).where(Lead.created_at >= today_start)
+    )
+    today_count = today_result.scalar() or 0
+
+    # Week count
+    week_result = await db.execute(
+        select(func.count(Lead.id)).where(Lead.created_at >= week_start)
+    )
+    week_count = week_result.scalar() or 0
+
+    # Conversion rate
     completed = by_status.get("completed", 0)
     conversion = round((completed / total * 100), 1) if total > 0 else 0
 
-    # Recent leads (last 7 days, grouped by day)
+    # Recent leads (last 7 days) — only this small subset loaded
+    recent_result = await db.execute(
+        select(Lead.created_at).where(Lead.created_at >= week_start)
+    )
     daily = {}
-    for lead in leads:
-        if lead.created_at and lead.created_at >= week_start:
-            day = lead.created_at.strftime("%d.%m")
+    for row in recent_result:
+        if row[0]:
+            day = row[0].strftime("%d.%m")
             daily[day] = daily.get(day, 0) + 1
 
     return {
@@ -209,10 +228,13 @@ async def search_leads(
     admin_username: str = Depends(get_current_admin)
 ):
     """Search leads by name, contact, or AI summary."""
+    # Escape LIKE-special characters to prevent wildcard injection
+    safe_q = q.replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{safe_q}%"
     query = select(Lead).where(
-        Lead.name.ilike(f"%{q}%") |
-        Lead.contact.ilike(f"%{q}%") |
-        Lead.ai_summary.ilike(f"%{q}%")
+        Lead.name.ilike(pattern) |
+        Lead.contact.ilike(pattern) |
+        Lead.ai_summary.ilike(pattern)
     ).order_by(Lead.created_at.desc())
     result = await db.execute(query)
     leads = result.scalars().all()
@@ -247,15 +269,20 @@ async def update_lead(
     if secret == INTERNAL_SECRET:
         authorized = True
     
-    # 2. If not internal, check for admin JWT
+    # 2. If not internal, verify admin JWT properly
     if not authorized:
-         auth_header = request.headers.get("Authorization")
-         if not auth_header:
-             raise HTTPException(status_code=401, detail="Not authorized")
-         try:
-             pass
-         except:
-             raise HTTPException(status_code=401, detail="Invalid credentials")
+        from jose import jwt, JWTError
+        from ..auth import JWT_SECRET, JWT_ALGORITHM
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Not authorized")
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            if payload.get("type") != "admin":
+                raise HTTPException(status_code=403, detail="Admin access required")
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
     db_lead = await db.get(Lead, lead_id)
     if not db_lead:
@@ -355,9 +382,18 @@ async def get_lead_proposal(
         authorized = True
     
     if not authorized:
-         auth_header = request.headers.get("Authorization")
-         if not auth_header:
-             raise HTTPException(status_code=401, detail="Not authorized")
+        from jose import jwt, JWTError
+        from ..auth import JWT_SECRET, JWT_ALGORITHM
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Not authorized")
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            if payload.get("sub") is None:
+                raise HTTPException(status_code=401, detail="Invalid token")
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
     
     db_lead = await db.get(Lead, lead_id)
     if not db_lead or not db_lead.ai_summary:
@@ -369,7 +405,7 @@ async def get_lead_proposal(
     return StreamingResponse(
         pdf_buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 

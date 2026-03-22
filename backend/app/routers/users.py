@@ -1,6 +1,8 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from passlib.hash import bcrypt
 import hashlib
 
 from ..database import get_db
@@ -8,10 +10,13 @@ from ..models import Lead, User, UserRole
 from ..schemas import LeadResponse, UserResponse, UserUpdate, UserCreate
 from ..deps import get_current_active_user, require_role
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    """Hash password using bcrypt."""
+    return bcrypt.hash(password)
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(

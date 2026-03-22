@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import engine, Base
@@ -6,6 +7,22 @@ from .routers import team, services, portfolio, chat, auth, leads, upload, users
 from fastapi.staticfiles import StaticFiles
 import os
 from sqlalchemy import text
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,6 +32,7 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'admin'"))
         except Exception:
             pass
+    logger.info("Application started, database tables verified.")
     yield
 
 
@@ -23,6 +41,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Attach rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

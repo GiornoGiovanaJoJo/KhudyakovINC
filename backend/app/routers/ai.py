@@ -1,8 +1,11 @@
 import os
+import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from ..schemas import AIRequest, AIResponse
 from ..auth import get_current_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -144,7 +147,8 @@ async def _call_yandex_gpt(system_prompt: str, user_text: str) -> str:
             result = response.json()
             return result['result']['alternatives'][0]['message']['text']
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Ошибка YandexGPT API: {str(e)}")
+            logger.error(f"YandexGPT API error: {e}")
+            raise HTTPException(status_code=500, detail="Ошибка YandexGPT API")
 
 
 @router.post("/evaluate", response_model=AIResponse)
